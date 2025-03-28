@@ -1,8 +1,5 @@
 "use client"
 
-// components/AnnotationToolbar.tsx
-import { useState } from 'react';
-
 type AnnotationTool = 'highlight' | 'underline' | 'signature' | 'none';
 
 interface AnnotationToolbarProps {

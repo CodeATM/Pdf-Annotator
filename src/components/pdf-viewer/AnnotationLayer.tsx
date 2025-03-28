@@ -10,7 +10,6 @@ import {
   Pencil1Icon,
   CopyIcon,
   StrikethroughIcon,
-  DrawingPinIcon,
   ResetIcon,
   DownloadIcon,
   Cross2Icon,

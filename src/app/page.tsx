@@ -3,12 +3,6 @@
 import PDFAnnotator from "@/components/pdf-viewer/AnnotationLayer";
 import React from "react";
 
-// Define props interface
-interface PDFAnnotatorProps {
-  maxFileSize?: number; // Optional prop for file size limit in MB
-  onFileUpload?: (file: File) => void; // Optional callback for file upload
-}
-
 const Page = () => {
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
