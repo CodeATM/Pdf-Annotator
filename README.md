@@ -1,36 +1,166 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PDF Annotator
+
+A powerful, web-based PDF annotation tool built with Next.js and TypeScript that allows users to highlight, underline, and add signatures to PDF documents.
+
+## Features
+
+- 📝 PDF Annotations
+  - Highlight text and areas
+  - Add underlines
+  - Insert digital signatures
+  - Free-form drawing capabilities
+- 🎨 Customization
+  - Adjustable signature size
+  - Multiple annotation tools
+  - Undo/redo functionality
+- 💾 Document Management
+  - PDF file upload
+  - Export annotated PDFs
+  - File size validation
+- 🎯 User Experience
+  - Responsive design
+  - Real-time preview
+  - Intuitive interface
+  - Drag and drop file upload
+
+## Tech Stack
+
+- **Framework**: Next.js 14
+- **Language**: TypeScript
+- **PDF Processing**: pdf-lib
+- **PDF Viewing**: react-pdf
+- **Signature Pad**: react-signature-pad-wrapper
+- **File Handling**: react-dropzone
+- **Styling**: Tailwind CSS
+- **Icons**: Radix UI Icons
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/pdf-annotator.git
+```
 
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+3. Run the development server:
 ```bash
 npm run dev
 # or
 yarn dev
 # or
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Usage
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Upload PDF**
+   - Click the upload button or drag and drop a PDF file
+   - Maximum file size can be configured (default 10MB)
 
-## Learn More
+2. **Add Annotations**
+   - Highlight: Click the highlight tool and drag across any area
+   - Underline: Select the underline tool and drag where needed
+   - Signature: 
+     1. Click the signature tool
+     2. Click where you want to place the signature
+     3. Draw your signature in the modal
+     4. Adjust size using the slider
+     5. Click "Add Signature"
 
-To learn more about Next.js, take a look at the following resources:
+3. **Manage Annotations**
+   - Use the undo button to remove the last annotation
+   - Clear all annotations with the reset button
+   - Export the annotated PDF using the export button
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Component Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+├── app/
+│   └── page.tsx           # Main page component
+└── components/
+    └── pdf-viewer/
+        └── AnnotationLayer.tsx  # PDF annotation component
+```
 
-## Deploy on Vercel
+### Key Components
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **PDFAnnotator**
+   - Main component handling PDF rendering and annotations
+   - Manages file upload and tool selection
+   - Coordinates all sub-components
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+2. **Toolbar**
+   - Contains annotation tools and action buttons
+   - Handles tool selection and file operations
+
+3. **SignatureModal**
+   - Manages signature creation and placement
+   - Provides size adjustment controls
+
+4. **AnnotationTools**
+   - Individual tool buttons for different annotation types
+   - Visual feedback for active tools
+
+## API Reference
+
+### PDFAnnotator Props
+
+```typescript
+interface PDFAnnotatorProps {
+  maxFileSize?: number;        // Maximum file size in MB
+  onFileUpload?: (file: File) => void;  // File upload callback
+}
+```
+
+### Annotation Types
+
+```typescript
+type AnnotationType = 'highlight' | 'underline' | 'signature';
+
+interface Annotation {
+  id: string;
+  type: AnnotationType;
+  pageNumber: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color?: string;
+  imageData?: string;
+}
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+## Acknowledgments
+
+- [pdf-lib](https://github.com/Hopding/pdf-lib) for PDF manipulation
+- [react-pdf](https://github.com/wojtekmaj/react-pdf) for PDF rendering
+- [react-signature-pad-wrapper](https://github.com/michaeldzjap/react-signature-pad-wrapper) for signature functionality
+- [Tailwind CSS](https://tailwindcss.com/) for styling
+- [Radix UI](https://www.radix-ui.com/) for icons and components
+
+## Support
+
+For support, please open an issue in the repository or contact [your-email@example.com](mailto:your-email@example.com).
