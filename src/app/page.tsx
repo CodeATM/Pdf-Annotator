@@ -10,7 +10,6 @@ const Page = () => {
         <PDFAnnotator
           maxFileSize={10} // 10MB limit
           onFileUpload={(file: File) => {
-            // Optional: You can add additional handling here
             console.log("File uploaded:", file.name);
           }}
         />

@@ -1,5 +1,5 @@
 // components/PDFAnnotator.tsx
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, MutableRefObject } from "react";
 import { useDropzone } from "react-dropzone";
 import { PDFDocument, rgb } from "pdf-lib";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -15,7 +15,6 @@ import {
   Cross2Icon,
   FileIcon,
 } from "@radix-ui/react-icons";
-import { MutableRefObject } from 'react';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
@@ -73,7 +72,7 @@ interface PDFAnnotatorProps {
 }
 
 // Toolbar Component
-const Toolbar = ({ 
+const Toolbar = ({
   pdfFile,
   activeTool,
   setActiveTool,
@@ -83,7 +82,7 @@ const Toolbar = ({
   annotations,
   clearAll,
   getRootProps,
-  getInputProps 
+  getInputProps,
 }: {
   pdfFile: File | null;
   activeTool: AnnotationType | null;
@@ -107,9 +106,14 @@ const Toolbar = ({
       </div>
     ) : (
       <>
-        <AnnotationTools activeTool={activeTool} setActiveTool={setActiveTool} handleUndo={handleUndo} annotationsExist={annotations.length > 0} />
+        <AnnotationTools
+          activeTool={activeTool}
+          setActiveTool={setActiveTool}
+          handleUndo={handleUndo}
+          annotationsExist={annotations.length > 0}
+        />
         <div className="flex-grow" />
-        <ActionButtons 
+        <ActionButtons
           activeTool={activeTool}
           setActiveTool={setActiveTool}
           exportAnnotatedPdf={exportAnnotatedPdf}
@@ -123,11 +127,11 @@ const Toolbar = ({
 );
 
 // Annotation Tools Component
-const AnnotationTools = ({ 
-  activeTool, 
-  setActiveTool, 
-  handleUndo, 
-  annotationsExist 
+const AnnotationTools = ({
+  activeTool,
+  setActiveTool,
+  handleUndo,
+  annotationsExist,
 }: {
   activeTool: AnnotationType | null;
   setActiveTool: (tool: AnnotationType | null) => void;
@@ -181,13 +185,13 @@ const AnnotationTools = ({
 );
 
 // Action Buttons Component
-const ActionButtons = ({ 
+const ActionButtons = ({
   activeTool,
   setActiveTool,
   exportAnnotatedPdf,
   isLoading,
   annotationsExist,
-  clearAll
+  clearAll,
 }: {
   activeTool: AnnotationType | null;
   setActiveTool: (tool: AnnotationType | null) => void;
@@ -205,19 +209,19 @@ const ActionButtons = ({
       <Cross2Icon className="w-5 h-5" />
     </button>
     <button
+      className="p-2 rounded-md hover:bg-red-100 text-red-600 transition-colors"
+      onClick={clearAll}
+      title="Clear All"
+    >
+      <ResetIcon className="w-5 h-5" />
+    </button>
+    <button
       className="flex items-center gap-2 px-3 py-2 bg-zinc-900 text-white rounded-md hover:bg-zinc-800 transition-colors disabled:opacity-50"
       onClick={exportAnnotatedPdf}
       disabled={isLoading || !annotationsExist}
     >
       <DownloadIcon className="w-5 h-5" />
       {isLoading ? "Exporting..." : "Export"}
-    </button>
-    <button
-      className="p-2 rounded-md hover:bg-red-100 text-red-600 transition-colors"
-      onClick={clearAll}
-      title="Clear All"
-    >
-      <ResetIcon className="w-5 h-5" />
     </button>
   </div>
 );
@@ -230,31 +234,36 @@ const SignatureModal = ({
   signatureSize,
   setSignatureSize,
   handleClearSignature,
-  handleSaveSignature
-}: SignatureModalProps) => (
+  handleSaveSignature,
+}: SignatureModalProps) =>
   showSignatureModal && (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-[90vw] sm:max-w-md p-4 sm:p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base sm:text-lg font-semibold text-zinc-900">Draw Signature</h2>
-          <button onClick={handleCloseModal} className="text-zinc-500 hover:text-zinc-700">
+          <h2 className="text-base sm:text-lg font-semibold text-zinc-900">
+            Draw Signature
+          </h2>
+          <button
+            onClick={handleCloseModal}
+            className="text-zinc-500 hover:text-zinc-700"
+          >
             <Cross2Icon className="w-5 h-5" />
           </button>
         </div>
-        
+
         <div className="border border-zinc-200 rounded-md overflow-hidden">
           <SignaturePad
             ref={signaturePadRef}
             options={{
               minWidth: 1,
               maxWidth: 3,
-              penColor: 'black',
-              backgroundColor: 'rgb(255, 255, 255)'
+              penColor: "black",
+              backgroundColor: "rgb(255, 255, 255)",
             }}
             canvasProps={{
               width: "400",
               height: "200",
-              className: 'w-full h-[150px] sm:h-[200px]'
+              className: "w-full h-[150px] sm:h-[200px]",
             }}
           />
         </div>
@@ -267,10 +276,12 @@ const SignatureModal = ({
               min="100"
               max="400"
               value={signatureSize.width}
-              onChange={(e) => setSignatureSize({
-                width: Number(e.target.value),
-                height: Number(e.target.value) / 2
-              })}
+              onChange={(e) =>
+                setSignatureSize({
+                  width: Number(e.target.value),
+                  height: Number(e.target.value) / 2,
+                })
+              }
               className="w-full"
             />
           </div>
@@ -292,30 +303,29 @@ const SignatureModal = ({
         </div>
       </div>
     </div>
-  )
-);
+  );
 
-const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpload }) => {
+const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
+  maxFileSize = 10,
+  onFileUpload,
+}) => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [annotationHistory, setAnnotationHistory] = useState<Annotation[][]>(
-    []
-  );
+  const [annotationHistory, setAnnotationHistory] = useState<Annotation[][]>([]);
   const [activeTool, setActiveTool] = useState<AnnotationType | null>(null);
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentAnnotation, setCurrentAnnotation] = useState<Annotation | null>(
-    null
-  );
+  const [currentAnnotation, setCurrentAnnotation] = useState<Annotation | null>(null);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
-  const [pageDimensions, setPageDimensions] = useState<{
-    [key: number]: { width: number; height: number };
-  }>({});
+  const [pageDimensions, setPageDimensions] = useState<{ [key: number]: { width: number; height: number } }>({});
   const [signaturePosition, setSignaturePosition] = useState<SignaturePosition | null>(null);
-  const [signatureSize, setSignatureSize] = useState({ width: 200, height: 100 });
+  const [signatureSize, setSignatureSize] = useState({
+    width: 200,
+    height: 100,
+  });
   const [scale, setScale] = useState(1);
   const [pageViewports, setPageViewports] = useState<{ [key: number]: PageViewport }>({});
 
@@ -323,17 +333,16 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
   const pageRefs = useRef<PageRefs>({});
   const signaturePadRef = useRef<SignaturePadRef | null>(null);
 
-  // Add useEffect for scale calculation
+  // Calculate scale based on container size
   useEffect(() => {
     if (!containerRef.current) return;
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const width = entry.contentRect.width;
-        // Calculate scale based on container width
-        // Assuming standard PDF width is 612 points (8.5 inches)
-        const newScale = Math.min((width - 48) / 612, 1.5); // 48px for padding, max scale 1.5
-        setScale(Math.max(newScale, 0.5)); // minimum scale 0.5
+        // Calculate scale based on container width (standard PDF width is about 612 points)
+        const newScale = Math.min((width - 48) / 612, 1.5); // Account for padding and set max scale
+        setScale(Math.max(newScale, 0.5));
       }
     });
 
@@ -342,46 +351,47 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
   }, []);
 
   // Handle file drop
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const file = acceptedFiles[0];
+      if (!file) return;
 
-    // Check file size
-    const fileSizeInMB = file.size / (1024 * 1024);
-    if (maxFileSize && fileSizeInMB > maxFileSize) {
-      setError(`File size exceeds ${maxFileSize}MB limit`);
-      return;
-    }
+      const fileSizeInMB = file.size / (1024 * 1024);
+      if (maxFileSize && fileSizeInMB > maxFileSize) {
+        setError(`File size exceeds ${maxFileSize}MB limit`);
+        return;
+      }
 
-    setPdfFile(file);
-    setError(null);
-    
-    // Call the onFileUpload callback if provided
-    if (onFileUpload) {
-      onFileUpload(file);
-    }
-  }, [maxFileSize, onFileUpload]);
+      setPdfFile(file);
+      setError(null);
+      if (onFileUpload) onFileUpload(file);
+    },
+    [maxFileSize, onFileUpload]
+  );
 
   // Signature functions
   const handleSaveSignature = () => {
     if (signaturePadRef.current && signaturePosition) {
       const signatureDataUrl = signaturePadRef.current.toDataURL();
       const viewport = pageViewports[signaturePosition.pageNumber];
-      
       if (!viewport) return;
 
       const newAnnotation: Annotation = {
         id: `ann-${Date.now()}`,
-        type: 'signature',
+        type: "signature",
         pageNumber: signaturePosition.pageNumber,
         x: signaturePosition.x,
         y: signaturePosition.y,
-        width: (signatureSize.width / scale) * (viewport.width / signaturePosition.pageWidth),
-        height: (signatureSize.height / scale) * (viewport.height / signaturePosition.pageHeight),
+        width:
+          (signatureSize.width / scale) *
+          (viewport.width / signaturePosition.pageWidth),
+        height:
+          (signatureSize.height / scale) *
+          (viewport.height / signaturePosition.pageHeight),
         imageData: signatureDataUrl,
       };
 
-      setAnnotations(prev => [...prev, newAnnotation]);
+      setAnnotations((prev) => [...prev, newAnnotation]);
       setSignaturePosition(null);
       setShowSignatureModal(false);
       setActiveTool(null);
@@ -390,9 +400,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
   };
 
   const handleClearSignature = () => {
-    if (signaturePadRef.current) {
-      signaturePadRef.current.clear();
-    }
+    if (signaturePadRef.current) signaturePadRef.current.clear();
   };
 
   // Annotation drawing functions
@@ -402,20 +410,18 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
     const pageElement = pageRefs.current[pageNumber]!;
     const pageRect = pageElement.getBoundingClientRect();
     const viewport = pageViewports[pageNumber];
-    
     if (!viewport) return;
 
-    // Convert screen coordinates to PDF coordinates
-    const x = (e.clientX - pageRect.left) / pageRect.width * viewport.width;
-    const y = (e.clientY - pageRect.top) / pageRect.height * viewport.height;
+    const x = ((e.clientX - pageRect.left) / pageRect.width) * viewport.width;
+    const y = ((e.clientY - pageRect.top) / pageRect.height) * viewport.height;
 
-    if (activeTool === 'signature') {
+    if (activeTool === "signature") {
       setSignaturePosition({
         x,
         y,
         pageNumber,
         pageWidth: viewport.width,
-        pageHeight: viewport.height
+        pageHeight: viewport.height,
       });
       setShowSignatureModal(true);
       return;
@@ -429,7 +435,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
       y,
       width: 0,
       height: 0,
-      color: activeTool === 'highlight' ? 'rgba(255, 255, 0, 0.4)' : 'blue',
+      color: activeTool === "highlight" ? "rgba(255, 255, 0, 0.4)" : "blue",
     };
 
     setCurrentAnnotation(newAnnotation);
@@ -437,16 +443,20 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
   };
 
   const updateAnnotation = (e: React.MouseEvent) => {
-    if (!isDrawing || !currentAnnotation || !pageRefs.current[currentAnnotation.pageNumber]) return;
+    if (
+      !isDrawing ||
+      !currentAnnotation ||
+      !pageRefs.current[currentAnnotation.pageNumber]
+    )
+      return;
 
     const pageElement = pageRefs.current[currentAnnotation.pageNumber]!;
     const pageRect = pageElement.getBoundingClientRect();
     const viewport = pageViewports[currentAnnotation.pageNumber];
-    
     if (!viewport) return;
 
-    const currentX = (e.clientX - pageRect.left) / pageRect.width * viewport.width;
-    const currentY = (e.clientY - pageRect.top) / pageRect.height * viewport.height;
+    const currentX = ((e.clientX - pageRect.left) / pageRect.width) * viewport.width;
+    const currentY = ((e.clientY - pageRect.top) / pageRect.height) * viewport.height;
 
     const width = currentX - currentAnnotation.x;
     const height = currentY - currentAnnotation.y;
@@ -461,13 +471,35 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
   const finishAnnotation = () => {
     if (!currentAnnotation) return;
 
-    // Save annotation if it has a minimum size
-    if (Math.abs(currentAnnotation.width) > 5 / scale && Math.abs(currentAnnotation.height) > 5 / scale) {
-      setAnnotations(prev => [...prev, currentAnnotation]);
+    if (
+      Math.abs(currentAnnotation.width) > 5 / scale &&
+      Math.abs(currentAnnotation.height) > 5 / scale
+    ) {
+      setAnnotations((prev) => [...prev, currentAnnotation]);
     }
 
     setIsDrawing(false);
     setCurrentAnnotation(null);
+  };
+
+  // Touch event handlers to support mobile
+  const handleTouchStart = (e: React.TouchEvent, pageNumber: number) => {
+    e.preventDefault();
+    // Simulate a mouse event using the first touch point
+    startAnnotation(
+      { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY } as React.MouseEvent,
+      pageNumber
+    );
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    updateAnnotation({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY } as React.MouseEvent);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault();
+    finishAnnotation();
   };
 
   // Remove annotation
@@ -475,94 +507,78 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
     setAnnotations(annotations.filter((ann) => ann.id !== id));
   };
 
-  // Add undo function
+  // Undo function
   const handleUndo = () => {
     if (annotations.length === 0) return;
-
-    // Save current state to history
     setAnnotationHistory((prev) => [...prev, annotations]);
-    // Remove last annotation
     setAnnotations((prev) => prev.slice(0, -1));
   };
 
   // Export annotated PDF
   const exportAnnotatedPdf = async () => {
     if (!pdfFile) return;
-
     try {
       setIsLoading(true);
       setError(null);
-
-      // Load the PDF document
       const existingPdfBytes = await pdfFile.arrayBuffer();
       const pdfDoc = await PDFDocument.load(existingPdfBytes);
       const pages = pdfDoc.getPages();
 
-      // Process annotations page by page
       for (const annotation of annotations) {
         const page = pages[annotation.pageNumber - 1];
         const { width, height } = page.getSize();
 
-        if (annotation.type === 'highlight') {
-          // Add highlight annotation
+        if (annotation.type === "highlight") {
           page.drawRectangle({
             x: annotation.x,
-            y: height - annotation.y - Math.abs(annotation.height), // Flip Y coordinate
+            y: height - annotation.y - Math.abs(annotation.height),
             width: Math.abs(annotation.width),
             height: Math.abs(annotation.height),
-            color: rgb(1, 1, 0), // Yellow
+            color: rgb(1, 1, 0),
             opacity: 0.4,
           });
-        } else if (annotation.type === 'underline') {
-          // Add underline annotation
+        } else if (annotation.type === "underline") {
           page.drawLine({
             start: { x: annotation.x, y: height - annotation.y },
             end: { x: annotation.x + annotation.width, y: height - annotation.y },
             thickness: 2,
-            color: rgb(0, 0, 1), // Blue
+            color: rgb(0, 0, 1),
           });
-        } else if (annotation.type === 'signature' && annotation.imageData) {
-          // Handle signature
+        } else if (annotation.type === "signature" && annotation.imageData) {
           try {
-            // Convert base64 signature to bytes
-            const signatureBytes = await fetch(annotation.imageData).then(res => res.arrayBuffer());
+            const signatureBytes = await fetch(annotation.imageData).then((res) => res.arrayBuffer());
             const signatureImage = await pdfDoc.embedPng(signatureBytes);
-            
             page.drawImage(signatureImage, {
               x: annotation.x,
-              y: height - annotation.y - annotation.height, // Flip Y coordinate
+              y: height - annotation.y - annotation.height,
               width: annotation.width,
               height: annotation.height,
             });
           } catch (error) {
-            console.error('Error embedding signature:', error);
+            console.error("Error embedding signature:", error);
           }
         }
       }
 
-      // Save the modified PDF
       const modifiedPdfBytes = await pdfDoc.save();
-      const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
+      const blob = new Blob([modifiedPdfBytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
-
-      // Create download link
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.download = 'annotated-document.pdf';
+      link.download = "annotated-document.pdf";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-
       setIsLoading(false);
     } catch (err) {
-      console.error('Error exporting PDF:', err);
-      setError('Error exporting PDF. Please try again.');
+      console.error("Error exporting PDF:", err);
+      setError("Error exporting PDF. Please try again.");
       setIsLoading(false);
     }
   };
 
-  // Clear all
+  // Clear all annotations and file
   const clearAll = () => {
     setPdfFile(null);
     setAnnotations([]);
@@ -573,14 +589,14 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
 
   // Track page dimensions
   const handlePageLoadSuccess = (pageNumber: number, page: any) => {
-    const viewport = page.getViewport({ scale: 1 }); // Get viewport at scale 1
-    setPageViewports(prev => ({
+    const viewport = page.getViewport({ scale: 1 });
+    setPageViewports((prev) => ({
       ...prev,
       [pageNumber]: {
         width: viewport.width,
         height: viewport.height,
-        rotation: viewport.rotation
-      }
+        rotation: viewport.rotation,
+      },
     }));
   };
 
@@ -592,62 +608,61 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
     maxFiles: 1,
   });
 
-  // Handle mouse up outside the component
+  // Global mouse up to finish drawing
   useEffect(() => {
     const handleMouseUp = () => {
-      if (isDrawing) {
-        finishAnnotation();
-      }
+      if (isDrawing) finishAnnotation();
     };
-
     document.addEventListener("mouseup", handleMouseUp);
     return () => {
       document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isDrawing]);
 
-  // Close modal handler
+  // Close signature modal
   const handleCloseModal = () => {
     setShowSignatureModal(false);
     setSignaturePosition(null);
     setActiveTool(null);
   };
 
-  // Update the annotation rendering to use percentages
+  // Updated renderAnnotation with overflow prevention
   const renderAnnotation = (annotation: Annotation, pageNumber: number): React.CSSProperties => {
     const viewport = pageViewports[pageNumber];
     const pageElement = pageRefs.current[pageNumber];
-    
     if (!viewport || !pageElement) return {};
 
     const pageRect = pageElement.getBoundingClientRect();
     const scaleX = pageRect.width / viewport.width;
     const scaleY = pageRect.height / viewport.height;
-
-    if (annotation.type === 'signature') {
-      return {
-        left: `${annotation.x * scaleX}px`,
-        top: `${annotation.y * scaleY}px`,
-        width: `${annotation.width * scaleX}px`,
-        height: `${annotation.height * scaleY}px`,
-      };
+    
+    let left, top, width, height;
+    if (annotation.type === "signature") {
+      left = annotation.x * scaleX;
+      top = annotation.y * scaleY;
+      width = annotation.width * scaleX;
+      height = annotation.height * scaleY;
+    } else {
+      left = (annotation.width < 0 ? annotation.x + annotation.width : annotation.x) * scaleX;
+      top = (annotation.height < 0 ? annotation.y + annotation.height : annotation.y) * scaleY;
+      width = Math.abs(annotation.width) * scaleX;
+      height = Math.abs(annotation.height) * scaleY;
     }
 
-    return {
-      left: `${(annotation.width < 0 ? annotation.x + annotation.width : annotation.x) * scaleX}px`,
-      top: `${(annotation.height < 0 ? annotation.y + annotation.height : annotation.y) * scaleY}px`,
-      width: `${Math.abs(annotation.width) * scaleX}px`,
-      height: `${Math.abs(annotation.height) * scaleY}px`,
-    };
+    // Constrain annotations within the page container
+    left = Math.max(0, Math.min(left, pageRect.width - width));
+    top = Math.max(0, Math.min(top, pageRect.height - height));
+
+    return { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` };
   };
 
-  // Update page ref handling
+  // Set page ref
   const setPageRef = useCallback((index: number, element: HTMLDivElement | null) => {
     pageRefs.current[index] = element;
   }, []);
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-2 sm:p-4 md:p-6">
+    <div className="h-screen bg-zinc-50 p-2 sm:p-4 md:p-6">
       <div className="max-w-5xl mx-auto space-y-6">
         <header className="flex items-center justify-between border-b border-zinc-200 pb-4">
           <h1 className="text-xl font-semibold text-zinc-900">PDF Annotator</h1>
@@ -676,7 +691,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
         <div
           ref={containerRef}
           className="border border-zinc-200 rounded-lg overflow-auto bg-white shadow-sm"
-          style={{ height: 'calc(100vh - 200px)' }}
+          style={{ height: "calc(100vh - 200px)" }}
           onMouseMove={updateAnnotation}
         >
           {pdfFile ? (
@@ -694,12 +709,11 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
                   onMouseMove={updateAnnotation}
                   onMouseUp={finishAnnotation}
                   onMouseLeave={finishAnnotation}
-                  style={{ 
-                    cursor: activeTool === 'signature' 
-                      ? 'crosshair' 
-                      : activeTool 
-                        ? 'crosshair' 
-                        : 'default' 
+                  onTouchStart={(e) => handleTouchStart(e, index + 1)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  style={{
+                    cursor: activeTool === "signature" || activeTool ? "crosshair" : "default",
                   }}
                 >
                   <Page
@@ -708,38 +722,38 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
                     onLoadSuccess={(page) => handlePageLoadSuccess(index + 1, page)}
                   />
 
-                  {/* Render current drawing annotation */}
-                  {isDrawing && currentAnnotation && currentAnnotation.pageNumber === index + 1 && (
-                    <div
-                      className="absolute border border-transparent"
-                      style={{
-                        ...renderAnnotation(currentAnnotation, index + 1),
-                        backgroundColor: currentAnnotation.type === 'highlight' 
-                          ? 'rgba(255, 255, 0, 0.4)' 
-                          : 'transparent',
-                        borderBottom: currentAnnotation.type === 'underline' 
-                          ? '2px solid blue' 
-                          : 'none',
-                        pointerEvents: 'none',
-                      }}
-                    />
-                  )}
+                  {/* Current drawing annotation */}
+                  {isDrawing &&
+                    currentAnnotation &&
+                    currentAnnotation.pageNumber === index + 1 && (
+                      <div
+                        className="absolute border border-transparent"
+                        style={{
+                          ...renderAnnotation(currentAnnotation, index + 1),
+                          backgroundColor:
+                            currentAnnotation.type === "highlight"
+                              ? "rgba(255, 255, 0, 0.4)"
+                              : "transparent",
+                          borderBottom:
+                            currentAnnotation.type === "underline"
+                              ? "2px solid blue"
+                              : "none",
+                          pointerEvents: "none",
+                        }}
+                      />
+                    )}
 
-                  {/* Render existing annotations */}
+                  {/* Existing annotations */}
                   {annotations
                     .filter((ann) => ann.pageNumber === index + 1)
                     .map((annotation) => {
                       const style = renderAnnotation(annotation, index + 1);
-
-                      if (annotation.type === 'signature') {
+                      if (annotation.type === "signature") {
                         return (
                           <div
                             key={annotation.id}
                             className="absolute"
-                            style={{
-                              ...style,
-                              pointerEvents: 'none',
-                            } as React.CSSProperties}
+                            style={{ ...style, pointerEvents: "none" }}
                           >
                             <img
                               src={annotation.imageData}
@@ -749,21 +763,22 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
                           </div>
                         );
                       }
-
                       return (
                         <div
                           key={annotation.id}
                           className="absolute border border-transparent"
                           style={{
                             ...style,
-                            backgroundColor: annotation.type === 'highlight' 
-                              ? 'rgba(255, 255, 0, 0.4)' 
-                              : 'transparent',
-                            borderBottom: annotation.type === 'underline' 
-                              ? '2px solid blue' 
-                              : 'none',
-                            pointerEvents: 'none',
-                          } as React.CSSProperties}
+                            backgroundColor:
+                              annotation.type === "highlight"
+                                ? "rgba(255, 255, 0, 0.4)"
+                                : "transparent",
+                            borderBottom:
+                              annotation.type === "underline"
+                                ? "2px solid blue"
+                                : "none",
+                            pointerEvents: "none",
+                          }}
                         />
                       );
                     })}
@@ -773,7 +788,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
           ) : (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
               <svg
-                className="w-16 h-16 text-gray-400 mb-4"
+                className="w-16 h-16 text-gray-700 mb-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -790,7 +805,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
               </p>
               <div {...getRootProps()}>
                 <input {...getInputProps()} />
-                <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                <button className="px-4 py-2 bg-zinc-900 text-white rounded hover:bg-zinc-700">
                   Select PDF
                 </button>
               </div>
@@ -798,7 +813,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
           )}
         </div>
 
-        {/* Updated Signature Modal */}
+        {/* Signature Modal */}
         <SignatureModal
           showSignatureModal={showSignatureModal}
           handleCloseModal={handleCloseModal}
@@ -809,7 +824,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({ maxFileSize = 10, onFileUpl
           handleSaveSignature={handleSaveSignature}
         />
 
-        {activeTool === 'signature' && !showSignatureModal && (
+        {activeTool === "signature" && !showSignatureModal && (
           <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-zinc-800 text-white px-4 py-2 rounded-md text-sm">
             Click where you want to place your signature
           </div>
