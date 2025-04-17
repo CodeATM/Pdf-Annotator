@@ -20,6 +20,7 @@ import {
   DownloadIcon,
   Cross2Icon,
   FileIcon,
+  ChevronDownIcon,
 } from "@radix-ui/react-icons";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -81,6 +82,73 @@ interface PDFAnnotatorProps {
   onFileUpload?: (file: File) => void; // Optional callback for file upload
 }
 
+// Color Picker Component
+const ColorPicker = ({
+  selectedColor,
+  onColorSelect,
+  isOpen,
+  setIsOpen,
+}: {
+  selectedColor: string;
+  onColorSelect: (color: string) => void;
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+}) => {
+  const colors = [
+    { label: "Yellow", value: "rgba(255, 235, 60, 0.5)" },
+    { label: "Green", value: "rgba(76, 175, 80, 0.5)" },
+    { label: "Blue", value: "rgba(33, 150, 243, 0.5)" },
+    { label: "Pink", value: "rgba(233, 30, 99, 0.5)" },
+    { label: "Orange", value: "rgba(255, 152, 0, 0.5)" },
+    { label: "Purple", value: "rgba(156, 39, 176, 0.5)" },
+  ];
+
+  return (
+    <div className="relative">
+      {/* <button
+        className={`flex items-center gap-2 p-1.5 sm:p-2 rounded-md hover:bg-zinc-100 transition-colors ${
+          isOpen ? "bg-zinc-100" : ""
+        }`}
+        onClick={() => setIsOpen(!isOpen)}
+        title="Select Color"
+      >
+        <div
+          className="w-4 h-4 rounded-full border border-zinc-200 shadow-sm transition-transform"
+          style={{ backgroundColor: selectedColor }}
+        />
+        <ChevronDownIcon
+          className={`w-4 h-4 text-zinc-600 transition-transform ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button> */}
+
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg border border-zinc-200 p-2 z-50">
+          <div className="flex gap-2">
+            {colors.map((color) => (
+              <button
+                key={color.value}
+                className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
+                  selectedColor === color.value
+                    ? "border-zinc-500 scale-110 shadow-md"
+                    : "border-transparent hover:border-zinc-300"
+                }`}
+                style={{ backgroundColor: color.value }}
+                onClick={() => {
+                  onColorSelect(color.value);
+                  setIsOpen(false);
+                }}
+                title={color.label}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Toolbar Component
 const Toolbar = ({
   pdfFile,
@@ -93,6 +161,8 @@ const Toolbar = ({
   clearAll,
   getRootProps,
   getInputProps,
+  selectedColor,
+  setSelectedColor,
 }: {
   pdfFile: File | null;
   activeTool: AnnotationType | null;
@@ -100,6 +170,8 @@ const Toolbar = ({
   handleUndo: () => void;
   exportAnnotatedPdf: () => void;
   isLoading: boolean;
+  selectedColor: any;
+  setSelectedColor: any;
   annotations: Annotation[];
   clearAll: () => void;
   getRootProps: () => any;
@@ -121,6 +193,8 @@ const Toolbar = ({
           setActiveTool={setActiveTool}
           handleUndo={handleUndo}
           annotationsExist={annotations.length > 0}
+          selectedColor={selectedColor}
+          setSelectedColor={setSelectedColor}
         />
         <div className="flex-grow" />
         <ActionButtons
@@ -142,58 +216,122 @@ const AnnotationTools = ({
   setActiveTool,
   handleUndo,
   annotationsExist,
+  selectedColor,
+  setSelectedColor,
 }: {
   activeTool: AnnotationType | null;
   setActiveTool: (tool: AnnotationType | null) => void;
   handleUndo: () => void;
   annotationsExist: boolean;
-}) => (
-  <div className="flex items-center gap-1">
-    <button
-      className={`p-1.5 sm:p-2 rounded-md transition-colors ${
-        activeTool === "highlight"
-          ? "bg-yellow-100 text-yellow-700"
-          : "hover:bg-zinc-100 text-zinc-700"
-      }`}
-      onClick={() => setActiveTool("highlight")}
-      title="Highlight"
-    >
-      <CopyIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-    </button>
-    <button
-      className={`p-2 rounded-md transition-colors ${
-        activeTool === "underline"
-          ? "bg-blue-100 text-blue-700"
-          : "hover:bg-zinc-100 text-zinc-700"
-      }`}
-      onClick={() => setActiveTool("underline")}
-      title="Underline"
-    >
-      <StrikethroughIcon className="w-5 h-5" />
-    </button>
-    <button
-      className={`p-1.5 sm:p-2 rounded-md transition-colors ${
-        activeTool === "signature"
-          ? "bg-green-100 text-green-700"
-          : "hover:bg-zinc-100 text-zinc-700"
-      }`}
-      onClick={() => setActiveTool("signature")}
-      title="Add Signature"
-    >
-      <Pencil1Icon className="w-4 h-4 sm:w-5 sm:h-5" />
-    </button>
-    <div className="h-6 w-px bg-zinc-200 mx-1" />
-    <button
-      className="p-2 rounded-md hover:bg-zinc-100 text-zinc-700 transition-colors disabled:opacity-50"
-      onClick={handleUndo}
-      disabled={!annotationsExist}
-      title="Undo"
-    >
-      <ResetIcon className="w-5 h-5 text-[#181818]" />
-    </button>
-  </div>
-);
+  selectedColor: string;
+  setSelectedColor: (color: string) => void;
+}) => {
+  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
 
+  const handleToolClick = (tool: AnnotationType) => {
+    if (activeTool === tool) {
+      setIsColorPickerOpen(!isColorPickerOpen);
+    } else {
+      setActiveTool(tool);
+      setIsColorPickerOpen(true);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      {/* Highlight Button */}
+      <div className="relative">
+        <button
+          className={`p-1.5 sm:p-2 rounded-md transition-colors ${
+            activeTool === "highlight"
+              ? "bg-yellow-100"
+              : "hover:bg-zinc-100 text-zinc-700"
+          }`}
+          onClick={() => handleToolClick("highlight")}
+          title="Highlight"
+        >
+          <CopyIcon
+            className="w-4 h-4 sm:w-5 sm:h-5"
+            style={{
+              color:
+                activeTool === "highlight"
+                  ? selectedColor.replace("0.5", "1").replace("rgba", "rgb")
+                  : "#71717a",
+            }}
+          />
+        </button>
+        {activeTool === "highlight" && isColorPickerOpen && (
+          <ColorPicker
+            selectedColor={selectedColor}
+            onColorSelect={(color) => {
+              setSelectedColor(color);
+              setIsColorPickerOpen(false);
+            }}
+            isOpen={isColorPickerOpen}
+            setIsOpen={setIsColorPickerOpen}
+          />
+        )}
+      </div>
+
+      {/* Underline Button */}
+      <div className="relative">
+        <button
+          className={`p-1.5 sm:p-2 rounded-md transition-colors ${
+            activeTool === "underline"
+              ? "bg-blue-100"
+              : "hover:bg-zinc-100 text-zinc-700"
+          }`}
+          onClick={() => handleToolClick("underline")}
+          title="Underline"
+        >
+          <StrikethroughIcon
+            className="w-4 h-4 sm:w-5 sm:h-5"
+            style={{
+              color:
+                activeTool === "underline"
+                  ? selectedColor.replace("0.5", "1").replace("rgba", "rgb")
+                  : "#71717a",
+            }}
+          />
+        </button>
+        {activeTool === "underline" && isColorPickerOpen && (
+          <ColorPicker
+            selectedColor={selectedColor}
+            onColorSelect={(color) => {
+              setSelectedColor(color);
+              setIsColorPickerOpen(false);
+            }}
+            isOpen={isColorPickerOpen}
+            setIsOpen={setIsColorPickerOpen}
+          />
+        )}
+      </div>
+
+      <button
+        className={`p-1.5 sm:p-2 rounded-md transition-colors ${
+          activeTool === "signature"
+            ? "bg-green-100 text-green-700"
+            : "hover:bg-zinc-100 text-zinc-700"
+        }`}
+        onClick={() => setActiveTool("signature")}
+        title="Add Signature"
+      >
+        <Pencil1Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+      </button>
+      <div className="h-6 w-px bg-zinc-200 mx-1" />
+
+      {/* Undo Button */}
+      <button
+        className="p-2 rounded-md hover:bg-zinc-100 text-zinc-700 transition-colors disabled:opacity-50"
+        onClick={handleUndo}
+        disabled={!annotationsExist}
+        title="Undo"
+      >
+        <ResetIcon className="w-5 h-5 text-[#181818]" />
+      </button>
+    </div>
+  );
+};
 // Action Buttons Component
 const ActionButtons = ({
   activeTool,
@@ -326,6 +464,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
     []
   );
   const [activeTool, setActiveTool] = useState<AnnotationType | null>(null);
+  const [selectedColor, setSelectedColor] = useState("rgba(255, 235, 60, 0.5)");
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -454,7 +593,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
       y,
       width: 0,
       height: 0,
-      color: activeTool === "highlight" ? "rgba(255, 255, 0, 0.4)" : "blue",
+      color: activeTool === "highlight" ? selectedColor : "blue",
     };
 
     setCurrentAnnotation(newAnnotation);
@@ -728,6 +867,8 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
           clearAll={clearAll}
           getRootProps={getRootProps}
           getInputProps={getInputProps}
+          selectedColor={selectedColor}
+          setSelectedColor={setSelectedColor}
         />
 
         {error && (
