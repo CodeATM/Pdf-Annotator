@@ -6,452 +6,25 @@ import {
   useCallback,
   MutableRefObject,
 } from "react";
+import {
+  PDFAnnotatorProps,
+  Annotation,
+  SignaturePosition,
+  AnnotationType,
+  PageViewport,
+} from "@/lib/types";
+import { PageRefs, SignaturePadRef } from "@/lib/types";
 import { useDropzone } from "react-dropzone";
 import { PDFDocument, rgb } from "pdf-lib";
 import { Document, Page, pdfjs } from "react-pdf";
-import SignaturePad from "react-signature-pad-wrapper";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
-import {
-  Pencil1Icon,
-  CopyIcon,
-  StrikethroughIcon,
-  ResetIcon,
-  DownloadIcon,
-  Cross2Icon,
-  FileIcon,
-  ChevronDownIcon,
-} from "@radix-ui/react-icons";
+import { Toolbar } from "../molecues/Toolbar";
+import { SignatureModal } from "../molecues/SignatureModal";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
-type AnnotationType = "highlight" | "underline" | "signature";
-
-interface Annotation {
-  id: string;
-  type: AnnotationType;
-  pageNumber: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  color?: string;
-  imageData?: string;
-  textContent?: string;
-}
-
-interface SignaturePosition {
-  x: number;
-  y: number;
-  pageNumber: number;
-  pageWidth: number;
-  pageHeight: number;
-}
-
-interface PageViewport {
-  width: number;
-  height: number;
-  rotation: number;
-}
-
-interface color {
-  color: string;
-}
-
-interface SignaturePadRef extends SignaturePad {
-  clear: () => void;
-  toDataURL: () => string;
-}
-
-interface PageRefs {
-  [key: number]: HTMLDivElement | null;
-}
-
-interface SignatureModalProps {
-  showSignatureModal: boolean;
-  handleCloseModal: () => void;
-  signaturePadRef: MutableRefObject<SignaturePadRef | null>;
-  signatureSize: { width: number; height: number };
-  setSignatureSize: (size: { width: number; height: number }) => void;
-  handleClearSignature: () => void;
-  handleSaveSignature: () => void;
-}
-
-interface PDFAnnotatorProps {
-  maxFileSize?: number; // Optional prop for file size limit in MB
-  onFileUpload?: (file: File) => void; // Optional callback for file upload
-}
-
-// Color Picker Component
-const ColorPicker = ({
-  selectedColor,
-  onColorSelect,
-  isOpen,
-  setIsOpen,
-}: {
-  selectedColor: string;
-  onColorSelect: (color: string) => void;
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-}) => {
-  const colors = [
-    { label: "Yellow", value: "rgba(255, 235, 60, 0.5)" },
-    { label: "Green", value: "rgba(76, 175, 80, 0.5)" },
-    { label: "Blue", value: "rgba(33, 150, 243, 0.5)" },
-    { label: "Pink", value: "rgba(233, 30, 99, 0.5)" },
-    { label: "Orange", value: "rgba(255, 152, 0, 0.5)" },
-    { label: "Purple", value: "rgba(156, 39, 176, 0.5)" },
-  ];
-
-  return (
-    <div className="relative">
-      {/* <button
-        className={`flex items-center gap-2 p-1.5 sm:p-2 rounded-md hover:bg-zinc-100 transition-colors ${
-          isOpen ? "bg-zinc-100" : ""
-        }`}
-        onClick={() => setIsOpen(!isOpen)}
-        title="Select Color"
-      >
-        <div
-          className="w-4 h-4 rounded-full border border-zinc-200 shadow-sm transition-transform"
-          style={{ backgroundColor: selectedColor }}
-        />
-        <ChevronDownIcon
-          className={`w-4 h-4 text-zinc-600 transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
-      </button> */}
-
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg border border-zinc-200 p-2 z-50">
-          <div className="flex gap-2">
-            {colors.map((color) => (
-              <button
-                key={color.value}
-                className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
-                  selectedColor === color.value
-                    ? "border-zinc-500 scale-110 shadow-md"
-                    : "border-transparent hover:border-zinc-300"
-                }`}
-                style={{ backgroundColor: color.value }}
-                onClick={() => {
-                  onColorSelect(color.value);
-                  setIsOpen(false);
-                }}
-                title={color.label}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 // Toolbar Component
-const Toolbar = ({
-  pdfFile,
-  activeTool,
-  setActiveTool,
-  handleUndo,
-  exportAnnotatedPdf,
-  isLoading,
-  annotations,
-  clearAll,
-  getRootProps,
-  getInputProps,
-  selectedColor,
-  setSelectedColor,
-}: {
-  pdfFile: File | null;
-  activeTool: AnnotationType | null;
-  setActiveTool: (tool: AnnotationType | null) => void;
-  handleUndo: () => void;
-  exportAnnotatedPdf: () => void;
-  isLoading: boolean;
-  selectedColor: any;
-  setSelectedColor: any;
-  annotations: Annotation[];
-  clearAll: () => void;
-  getRootProps: () => any;
-  getInputProps: () => any;
-}) => (
-  <div className="flex items-center gap-2 p-2 bg-white rounded-lg shadow-sm border border-zinc-200">
-    {!pdfFile ? (
-      <div {...getRootProps()} className="w-full">
-        <input {...getInputProps()} />
-        <button className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-zinc-900 text-white rounded-md hover:bg-zinc-800 transition-colors">
-          <FileIcon className="w-5 h-5" />
-          <span>Upload PDF</span>
-        </button>
-      </div>
-    ) : (
-      <>
-        <AnnotationTools
-          activeTool={activeTool}
-          setActiveTool={setActiveTool}
-          handleUndo={handleUndo}
-          annotationsExist={annotations.length > 0}
-          selectedColor={selectedColor}
-          setSelectedColor={setSelectedColor}
-        />
-        <div className="flex-grow" />
-        <ActionButtons
-          activeTool={activeTool}
-          setActiveTool={setActiveTool}
-          exportAnnotatedPdf={exportAnnotatedPdf}
-          isLoading={isLoading}
-          annotationsExist={annotations.length > 0}
-          clearAll={clearAll}
-        />
-      </>
-    )}
-  </div>
-);
-
-// Annotation Tools Component
-const AnnotationTools = ({
-  activeTool,
-  setActiveTool,
-  handleUndo,
-  annotationsExist,
-  selectedColor,
-  setSelectedColor,
-}: {
-  activeTool: AnnotationType | null;
-  setActiveTool: (tool: AnnotationType | null) => void;
-  handleUndo: () => void;
-  annotationsExist: boolean;
-  selectedColor: string;
-  setSelectedColor: (color: string) => void;
-}) => {
-  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
-
-  const handleToolClick = (tool: AnnotationType) => {
-    if (activeTool === tool) {
-      setIsColorPickerOpen(!isColorPickerOpen);
-    } else {
-      setActiveTool(tool);
-      setIsColorPickerOpen(true);
-    }
-  };
-
-  return (
-    <div className="flex items-center gap-1">
-      {/* Highlight Button */}
-      <div className="relative">
-        <button
-          className={`p-1.5 sm:p-2 rounded-md transition-colors ${
-            activeTool === "highlight"
-              ? "bg-yellow-100"
-              : "hover:bg-zinc-100 text-zinc-700"
-          }`}
-          onClick={() => handleToolClick("highlight")}
-          title="Highlight"
-        >
-          <CopyIcon
-            className="w-4 h-4 sm:w-5 sm:h-5"
-            style={{
-              color:
-                activeTool === "highlight"
-                  ? selectedColor.replace("0.5", "1").replace("rgba", "rgb")
-                  : "#71717a",
-            }}
-          />
-        </button>
-        {activeTool === "highlight" && isColorPickerOpen && (
-          <ColorPicker
-            selectedColor={selectedColor}
-            onColorSelect={(color) => {
-              setSelectedColor(color);
-              setIsColorPickerOpen(false);
-            }}
-            isOpen={isColorPickerOpen}
-            setIsOpen={setIsColorPickerOpen}
-          />
-        )}
-      </div>
-
-      {/* Underline Button */}
-      <div className="relative">
-        <button
-          className={`p-1.5 sm:p-2 rounded-md transition-colors ${
-            activeTool === "underline"
-              ? "bg-blue-100"
-              : "hover:bg-zinc-100 text-zinc-700"
-          }`}
-          onClick={() => handleToolClick("underline")}
-          title="Underline"
-        >
-          <StrikethroughIcon
-            className="w-4 h-4 sm:w-5 sm:h-5"
-            style={{
-              color:
-                activeTool === "underline"
-                  ? selectedColor.replace("0.5", "1").replace("rgba", "rgb")
-                  : "#71717a",
-            }}
-          />
-        </button>
-        {activeTool === "underline" && isColorPickerOpen && (
-          <ColorPicker
-            selectedColor={selectedColor}
-            onColorSelect={(color) => {
-              setSelectedColor(color);
-              setIsColorPickerOpen(false);
-            }}
-            isOpen={isColorPickerOpen}
-            setIsOpen={setIsColorPickerOpen}
-          />
-        )}
-      </div>
-
-      <button
-        className={`p-1.5 sm:p-2 rounded-md transition-colors ${
-          activeTool === "signature"
-            ? "bg-green-100 text-green-700"
-            : "hover:bg-zinc-100 text-zinc-700"
-        }`}
-        onClick={() => setActiveTool("signature")}
-        title="Add Signature"
-      >
-        <Pencil1Icon className="w-4 h-4 sm:w-5 sm:h-5" />
-      </button>
-      <div className="h-6 w-px bg-zinc-200 mx-1" />
-
-      {/* Undo Button */}
-      <button
-        className="p-2 rounded-md hover:bg-zinc-100 text-zinc-700 transition-colors disabled:opacity-50"
-        onClick={handleUndo}
-        disabled={!annotationsExist}
-        title="Undo"
-      >
-        <ResetIcon className="w-5 h-5 text-[#181818]" />
-      </button>
-    </div>
-  );
-};
-// Action Buttons Component
-const ActionButtons = ({
-  activeTool,
-  setActiveTool,
-  exportAnnotatedPdf,
-  isLoading,
-  annotationsExist,
-  clearAll,
-}: {
-  activeTool: AnnotationType | null;
-  setActiveTool: (tool: AnnotationType | null) => void;
-  exportAnnotatedPdf: () => void;
-  isLoading: boolean;
-  annotationsExist: boolean;
-  clearAll: () => void;
-}) => (
-  <div className="flex items-center gap-1">
-    <button
-      className="p-2 rounded-md hover:bg-zinc-100 text-zinc-700 transition-colors"
-      onClick={() => setActiveTool(null)}
-      title="Cancel"
-    >
-      <Cross2Icon className="w-5 h-5" />
-    </button>
-    <button
-      className="p-2 rounded-md hover:bg-red-100 text-red-600 transition-colors"
-      onClick={clearAll}
-      title="Clear All"
-    >
-      <ResetIcon className="w-5 h-5" />
-    </button>
-    <button
-      className="flex items-center gap-2 px-3 py-2 bg-zinc-900 text-white rounded-md hover:bg-zinc-800 transition-colors disabled:opacity-50"
-      onClick={exportAnnotatedPdf}
-      disabled={isLoading || !annotationsExist}
-    >
-      <DownloadIcon className="w-5 h-5" />
-      {isLoading ? "Exporting..." : "Export"}
-    </button>
-  </div>
-);
-
-// Signature Modal Component
-const SignatureModal = ({
-  showSignatureModal,
-  handleCloseModal,
-  signaturePadRef,
-  signatureSize,
-  setSignatureSize,
-  handleClearSignature,
-  handleSaveSignature,
-}: SignatureModalProps) =>
-  showSignatureModal && (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-[90vw] sm:max-w-md p-4 sm:p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base sm:text-lg font-semibold text-zinc-900">
-            Draw Signature
-          </h2>
-          <button
-            onClick={handleCloseModal}
-            className="text-zinc-500 hover:text-zinc-700"
-          >
-            <Cross2Icon className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="border border-zinc-200 rounded-md overflow-hidden">
-          <SignaturePad
-            ref={signaturePadRef}
-            options={{
-              minWidth: 1,
-              maxWidth: 3,
-              penColor: "black",
-              backgroundColor: "rgb(255, 255, 255)",
-            }}
-            canvasProps={{
-              width: "400",
-              height: "200",
-              className: "w-full h-[150px] sm:h-[200px]",
-            }}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm text-zinc-600">Signature Size</label>
-          <div className="flex gap-4">
-            <input
-              type="range"
-              min="100"
-              max="400"
-              value={signatureSize.width}
-              onChange={(e) =>
-                setSignatureSize({
-                  width: Number(e.target.value),
-                  height: Number(e.target.value) / 2,
-                })
-              }
-              className="w-full"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-2">
-          <button
-            className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-zinc-600 hover:text-zinc-900"
-            onClick={handleClearSignature}
-          >
-            Clear
-          </button>
-          <button
-            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-zinc-900 text-white text-xs sm:text-sm rounded-md hover:bg-zinc-800"
-            onClick={handleSaveSignature}
-          >
-            Add Signature
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
 const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
   maxFileSize = 10,
@@ -547,6 +120,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
           (signatureSize.height / scale) *
           (viewport.height / signaturePosition.pageHeight),
         imageData: signatureDataUrl,
+        color: selectedColor, // Store current color with annotation
       };
 
       setAnnotations((prev) => [...prev, newAnnotation]);
@@ -593,10 +167,11 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
       y,
       width: 0,
       height: 0,
-      color: activeTool === "highlight" ? selectedColor : "blue",
+      color: selectedColor, // Store current color with annotation when created
     };
 
     setCurrentAnnotation(newAnnotation);
+    console.log(newAnnotation);
     setIsDrawing(true);
   };
 
@@ -694,14 +269,27 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
         const page = pages[annotation.pageNumber - 1];
         const { width, height } = page.getSize();
 
+        // Parse the color from the annotation's stored color
+        const colorRgba = annotation.color || "rgba(255, 235, 60, 0.5)";
+        const colorMatch = colorRgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+        
+        let r = 1, g = 1, b = 0, a = 0.4; // Default yellow with 0.4 opacity
+        
+        if (colorMatch) {
+          r = parseInt(colorMatch[1]) / 255;
+          g = parseInt(colorMatch[2]) / 255;
+          b = parseInt(colorMatch[3]) / 255;
+          a = colorMatch[4] ? parseFloat(colorMatch[4]) : 1;
+        }
+
         if (annotation.type === "highlight") {
           page.drawRectangle({
             x: annotation.x,
             y: height - annotation.y - Math.abs(annotation.height),
             width: Math.abs(annotation.width),
             height: Math.abs(annotation.height),
-            color: rgb(1, 1, 0),
-            opacity: 0.4,
+            color: rgb(r, g, b),
+            opacity: a,
           });
         } else if (annotation.type === "underline") {
           page.drawLine({
@@ -711,7 +299,8 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
               y: height - annotation.y,
             },
             thickness: 2,
-            color: rgb(0, 0, 1),
+            color: rgb(r, g, b),
+            opacity: a,
           });
         } else if (annotation.type === "signature" && annotation.imageData) {
           try {
@@ -927,11 +516,11 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
                           ...renderAnnotation(currentAnnotation, index + 1),
                           backgroundColor:
                             currentAnnotation.type === "highlight"
-                              ? "rgba(255, 255, 0, 0.4)"
+                              ? selectedColor
                               : "transparent",
                           borderBottom:
                             currentAnnotation.type === "underline"
-                              ? "2px solid blue"
+                              ? `2px solid ${selectedColor}`
                               : "none",
                           pointerEvents: "none",
                         }}
@@ -966,11 +555,11 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
                             ...style,
                             backgroundColor:
                               annotation.type === "highlight"
-                                ? "rgba(255, 255, 0, 0.4)"
+                                ? annotation.color || selectedColor
                                 : "transparent",
                             borderBottom:
                               annotation.type === "underline"
-                                ? "2px solid blue"
+                                ? `2px solid ${annotation.color || selectedColor}`
                                 : "none",
                             pointerEvents: "none",
                           }}
