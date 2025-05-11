@@ -45,7 +45,7 @@ export interface PageRefs {
 export interface SignatureModalProps {
   showSignatureModal: boolean;
   handleCloseModal: () => void;
-  signaturePadRef: MutableRefObject<SignaturePadRef | null>;
+  signaturePadRef: React.MutableRefObject<SignaturePad | null>;
   signatureSize: { width: number; height: number };
   setSignatureSize: (size: { width: number; height: number }) => void;
   handleClearSignature: () => void;
