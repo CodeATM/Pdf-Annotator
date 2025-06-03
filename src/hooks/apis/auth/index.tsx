@@ -8,7 +8,6 @@ import AuthService from "@/services/auth";
 export const useLoginUser = () => {
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
-  //   const updateAppState = useUpdateAuthContext();
 
   const onLogin = async ({
     payload,
@@ -20,16 +19,18 @@ export const useLoginUser = () => {
     setLoading(true);
     try {
       const res = await AuthService.login({ payload });
-      //   const user = {
-      //     user_id: res.data.user_id,
-      //     email: res.data.email,
-      //     name: res.data.name,
-      //   };
-      //   updateAppState({
-      //     accessToken: res.data.access,
-      //     refreshToken: res.data.refresh,
-      //     user,
-      //   });
+
+      const { accessToken, refreshToken } = res.data.data;
+
+      // Call the API route to set cookies
+      await fetch("/api/auth/setCookies", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ accessToken, refreshToken }),
+      });
+
       showSuccessToast({
         message: res.data.message || "🚀 Login success!",
         description: res.data.description || "",
@@ -37,17 +38,16 @@ export const useLoginUser = () => {
 
       successCallback?.();
       setRedirecting(true);
-    } catch (error: Error | AxiosError | any) {
-      if (error.response?.status === 400) {
-        showErrorToast({
-          message: error.response?.data?.Message || "Invalid credentials!",
-        });
-      } else {
-        showErrorToast({
-          message: error?.response?.data?.Message || "An error occurred!",
-          description: error?.response?.data?.description || "",
-        });
-      }
+    } catch (error: any) {
+      const apiResponse = error.response?.data || {
+        message: "An unknown error occurred",
+        description: "",
+      };
+
+      showErrorToast({
+        message: apiResponse.message,
+        description: apiResponse.description,
+      });
     } finally {
       setLoading(false);
     }
@@ -55,3 +55,55 @@ export const useLoginUser = () => {
 
   return { loading, onLogin, redirecting };
 };
+
+
+const useRegisterUser = () => {
+  const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+
+  const onRegister = async ({
+    payload,
+    successCallback,
+  }: {
+    payload: { email: string; password: string };
+    successCallback?: () => void;
+  }) => {
+    setLoading(true);
+    try {
+      const res = await AuthService.register({ payload });
+
+      const { accessToken, refreshToken } = res.data.data;
+
+      // Call the API route to set cookies
+      await fetch("/api/auth/setCookies", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ accessToken, refreshToken }),
+      });
+
+      showSuccessToast({
+        message: res.data.message || "🚀 Registration success!",
+        description: res.data.description || "",
+      });
+
+      successCallback?.();
+      setRedirecting(true);
+    } catch (error: any) {
+      const apiResponse = error.response?.data || {
+        message: "An unknown error occurred",
+        description: "",
+      };
+
+      showErrorToast({
+        message: apiResponse.message,
+        description: apiResponse.description,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { loading, onRegister, redirecting };
+}

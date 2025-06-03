@@ -8,6 +8,11 @@ class Service {
       withCredentials: true,
     });
   }
+  register({ payload }: TLoginService) {
+    return axios.post(env.api.auth + "/login", payload, {
+      withCredentials: true,
+    });
+  }
 }
 
 const AuthService = new Service();
