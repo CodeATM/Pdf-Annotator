@@ -56,8 +56,7 @@ export const useLoginUser = () => {
   return { loading, onLogin, redirecting };
 };
 
-
-const useRegisterUser = () => {
+export const useRegisterUser = () => {
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
 
@@ -106,4 +105,4 @@ const useRegisterUser = () => {
   };
 
   return { loading, onRegister, redirecting };
-}
+};
