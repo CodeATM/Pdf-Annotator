@@ -11,10 +11,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useFormik } from "formik";
-import * as Yup from "yup";
 import { Loader2 } from "lucide-react";
 import { useLoginUser } from "@/hooks/apis/auth";
 import { useRouter } from "next/navigation";
+import { LogininitialValues, LoginValidationSchema } from "@/lib/schema";
 
 export function LoginForm({
   className,
@@ -22,25 +22,12 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const { onLogin, loading } = useLoginUser();
   const router = useRouter();
-  const validationSchema = Yup.object({
-    email: Yup.string()
-      .email("Invalid email address")
-      .required("Email is required"),
-    password: Yup.string()
-      .min(6, "Password must be at least 6 characters")
-      .required("Password is required"),
-  });
 
   // Formik for form handling
   const formik = useFormik({
-    initialValues: {
-      email: "",
-      password: "",
-    },
-    validationSchema,
+    initialValues: LogininitialValues,
+    validationSchema: LoginValidationSchema,
     onSubmit: async (values: any, { setSubmitting }: any) => {
-      console.log("Submitting Form:", values);
-
       await onLogin({
         payload: values,
         successCallback: () => {

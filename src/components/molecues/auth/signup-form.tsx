@@ -9,11 +9,31 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RegisterValidationSchema, RegisterinitialValues } from "@/lib/schema";
+import { useFormik } from "formik";
+import { useRouter } from "next/navigation";
+import { useRegisterUser } from "@/hooks/apis/auth";
 
 export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const { onRegister, loading } = useRegisterUser();
+  const router = useRouter();
+
+  const formik = useFormik({
+    initialValues: RegisterinitialValues,
+    validationSchema: RegisterValidationSchema,
+    onSubmit: async (values: any, { setSubmitting }: any) => {
+      await onRegister({
+        payload: values,
+        successCallback: () => {
+          router.push("/home");
+        },
+      });
+      setSubmitting(false);
+    },
+  });
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
@@ -22,7 +42,7 @@ export function SignupForm({
           <CardDescription>Sign up with your Google account</CardDescription>
         </CardHeader>
         <CardContent>
-          <form>
+          <form onSubmit={formik.handleSubmit}>
             <div className="grid gap-4">
               <div className="flex flex-col gap-2">
                 <Button variant="outline" className="w-full">
