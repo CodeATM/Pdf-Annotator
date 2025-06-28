@@ -21,6 +21,7 @@ import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 import { Toolbar } from "../molecues/Toolbar";
 import { SignatureModal } from "../molecues/SignatureModal";
+import { useUserStore } from "@/lib/userStore";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
@@ -30,6 +31,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
   maxFileSize = 10,
   onFileUpload,
 }) => {
+  const { user } = useUserStore();
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
@@ -271,10 +273,15 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
 
         // Parse the color from the annotation's stored color
         const colorRgba = annotation.color || "rgba(255, 235, 60, 0.5)";
-        const colorMatch = colorRgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
-        
-        let r = 1, g = 1, b = 0, a = 0.4; // Default yellow with 0.4 opacity
-        
+        const colorMatch = colorRgba.match(
+          /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/
+        );
+
+        let r = 1,
+          g = 1,
+          b = 0,
+          a = 0.4; // Default yellow with 0.4 opacity
+
         if (colorMatch) {
           r = parseInt(colorMatch[1]) / 255;
           g = parseInt(colorMatch[2]) / 255;
@@ -442,7 +449,9 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
     <div className="h-screen bg-zinc-50 p-2 sm:p-4 md:p-6">
       <div className="max-w-5xl mx-auto space-y-6">
         <header className="flex items-center justify-between border-b border-zinc-200 pb-4">
-          <h1 className="text-xl font-semibold text-zinc-900">PDF Annotator</h1>
+          <h1 className="text-xl font-semibold text-zinc-900">
+            PDF Annotator {user?.email}
+          </h1>
         </header>
 
         <Toolbar
@@ -559,7 +568,9 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
                                 : "transparent",
                             borderBottom:
                               annotation.type === "underline"
-                                ? `2px solid ${annotation.color || selectedColor}`
+                                ? `2px solid ${
+                                    annotation.color || selectedColor
+                                  }`
                                 : "none",
                             pointerEvents: "none",
                           }}

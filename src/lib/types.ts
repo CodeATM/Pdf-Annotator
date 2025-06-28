@@ -56,3 +56,11 @@ export interface PDFAnnotatorProps {
   maxFileSize?: number; // Optional prop for file size limit in MB
   onFileUpload?: (file: File) => void; // Optional callback for file upload
 }
+
+export type User = {
+  id: string;
+  email: string;
+  firstname?: string;
+  lastname?: string;
+  // Add any other fields you expect from your user API
+};
