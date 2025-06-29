@@ -67,8 +67,8 @@ export function SignupForm({
                 <div className="grid gap-3">
                   <Label htmlFor="firstname">Firstname</Label>
                   <Input
-                    id="firstname"
-                    name="firstame"
+                    id="firstName"
+                    name="firstName"
                     type="text"
                     placeholder="John"
                     onChange={formik.handleChange}
@@ -84,8 +84,8 @@ export function SignupForm({
                 <div className="grid gap-3">
                   <Label htmlFor="lastname">Lastname</Label>
                   <Input
-                    id="lastname"
-                    name="lastname"
+                    id="lastName"
+                    name="lastName"
                     type="text"
                     placeholder="Doe"
                     onChange={formik.handleChange}

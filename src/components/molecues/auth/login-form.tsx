@@ -39,7 +39,7 @@ export function LoginForm({
       await onLogin({
         payload: values,
         successCallback: () => {
-          router.push("/home");
+          router.push("/dashboard");
         },
       });
     },

@@ -11,10 +11,8 @@ instance.interceptors.request.use(
       const { accessToken } = await getCookies();
       if (accessToken) {
         config.headers.Authorization = `Bearer ${accessToken}`;
-        console.log("Authorization Header Set:", config.headers.Authorization);
       } else {
         delete config.headers.Authorization;
-        console.log("Authorization Header Removed");
       }
     } catch (error) {
       console.error("Error in request interceptor:", error);
@@ -24,7 +22,6 @@ instance.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
-
 
 instance.interceptors.response.use(
   (response) => response,

@@ -11,12 +11,6 @@ export async function getCookies(): Promise<TokenInfo> {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("accessToken")?.value || null;
   const refreshToken = cookieStore.get("refreshToken")?.value || null;
-  console.log(
-    "getCookies - Access Token:",
-    accessToken,
-    "Refresh Token:",
-    refreshToken
-  );
   return {
     accessToken,
     refreshToken,
