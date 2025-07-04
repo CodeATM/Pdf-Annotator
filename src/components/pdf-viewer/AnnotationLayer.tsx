@@ -21,7 +21,8 @@ import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 import { Toolbar } from "../molecues/Toolbar";
 import { SignatureModal } from "../molecues/SignatureModal";
-import { useUserStore } from "@/lib/userStore";
+import { useUserStore } from "@/hooks/stores/userStore";
+import usePdfStore from "@/hooks/stores/usePdfStore";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
@@ -32,35 +33,39 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
   onFileUpload,
 }) => {
   const { user } = useUserStore();
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [annotationHistory, setAnnotationHistory] = useState<Annotation[][]>(
-    []
-  );
-  const [activeTool, setActiveTool] = useState<AnnotationType | null>(null);
-  const [selectedColor, setSelectedColor] = useState("rgba(255, 235, 60, 0.5)");
-  const [signatureImage, setSignatureImage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [currentAnnotation, setCurrentAnnotation] = useState<Annotation | null>(
-    null
-  );
-  const [showSignatureModal, setShowSignatureModal] = useState(false);
-  const [pageDimensions, setPageDimensions] = useState<{
-    [key: number]: { width: number; height: number };
-  }>({});
-  const [signaturePosition, setSignaturePosition] =
-    useState<SignaturePosition | null>(null);
-  const [signatureSize, setSignatureSize] = useState({
-    width: 200,
-    height: 100,
-  });
-  const [scale, setScale] = useState(1);
-  const [pageViewports, setPageViewports] = useState<{
-    [key: number]: PageViewport;
-  }>({});
+  const {
+    pdfFile,
+    setPdfFile,
+    numPages,
+    setNumPages,
+    annotations,
+    activeTool,
+    setActiveTool,
+    selectedColor,
+    setSelectedColor,
+    error,
+    setError,
+    isLoading,
+    setIsLoading,
+    isDrawing,
+    setIsDrawing,
+    currentAnnotation,
+    setCurrentAnnotation,
+    showSignatureModal,
+    setShowSignatureModal,
+    signaturePosition,
+    setSignaturePosition,
+    signatureSize,
+    setSignatureSize,
+    scale,
+    setScale,
+    pageViewports,
+    setPageViewports,
+    handleUndo,
+    removeAnnotation,
+    clearAll,
+    addAnnotation,
+  } = usePdfStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<PageRefs>({});
@@ -81,7 +86,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
 
     resizeObserver.observe(containerRef.current);
     return () => resizeObserver.disconnect();
-  }, []);
+  }, [setScale]);
 
   // Handle file drop
   const onDrop = useCallback(
@@ -99,7 +104,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
       setError(null);
       if (onFileUpload) onFileUpload(file);
     },
-    [maxFileSize, onFileUpload]
+    [maxFileSize, onFileUpload, setPdfFile, setError]
   );
 
   // Signature functions
@@ -125,7 +130,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
         color: selectedColor, // Store current color with annotation
       };
 
-      setAnnotations((prev) => [...prev, newAnnotation]);
+      addAnnotation(newAnnotation);
       setSignaturePosition(null);
       setShowSignatureModal(false);
       setActiveTool(null);
@@ -212,7 +217,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
       Math.abs(currentAnnotation.width) > 5 / scale &&
       Math.abs(currentAnnotation.height) > 5 / scale
     ) {
-      setAnnotations((prev) => [...prev, currentAnnotation]);
+      addAnnotation(currentAnnotation);
     }
 
     setIsDrawing(false);
@@ -245,18 +250,6 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
     finishAnnotation();
   };
 
-  // Remove annotation
-  const removeAnnotation = (id: string) => {
-    setAnnotations(annotations.filter((ann) => ann.id !== id));
-  };
-
-  // Undo function
-  const handleUndo = () => {
-    if (annotations.length === 0) return;
-    setAnnotationHistory((prev) => [...prev, annotations]);
-    setAnnotations((prev) => prev.slice(0, -1));
-  };
-
   // Export annotated PDF
   const exportAnnotatedPdf = async () => {
     if (!pdfFile) return;
@@ -269,7 +262,19 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
 
       for (const annotation of annotations) {
         const page = pages[annotation.pageNumber - 1];
-        const { width, height } = page.getSize();
+        const { width: pageWidth, height: pageHeight } = page.getSize();
+
+        // Normalize annotation rectangle to handle negative dimensions
+        const rectX =
+          annotation.width < 0
+            ? annotation.x + annotation.width
+            : annotation.x;
+        const rectY =
+          annotation.height < 0
+            ? annotation.y + annotation.height
+            : annotation.y;
+        const rectWidth = Math.abs(annotation.width);
+        const rectHeight = Math.abs(annotation.height);
 
         // Parse the color from the annotation's stored color
         const colorRgba = annotation.color || "rgba(255, 235, 60, 0.5)";
@@ -291,19 +296,20 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
 
         if (annotation.type === "highlight") {
           page.drawRectangle({
-            x: annotation.x,
-            y: height - annotation.y - Math.abs(annotation.height),
-            width: Math.abs(annotation.width),
-            height: Math.abs(annotation.height),
+            x: rectX,
+            y: pageHeight - rectY - rectHeight,
+            width: rectWidth,
+            height: rectHeight,
             color: rgb(r, g, b),
             opacity: a,
           });
         } else if (annotation.type === "underline") {
+          const lineY = pageHeight - (rectY + rectHeight);
           page.drawLine({
-            start: { x: annotation.x, y: height - annotation.y },
+            start: { x: rectX, y: lineY },
             end: {
-              x: annotation.x + annotation.width,
-              y: height - annotation.y,
+              x: rectX + rectWidth,
+              y: lineY,
             },
             thickness: 2,
             color: rgb(r, g, b),
@@ -317,7 +323,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
             const signatureImage = await pdfDoc.embedPng(signatureBytes);
             page.drawImage(signatureImage, {
               x: annotation.x,
-              y: height - annotation.y - annotation.height,
+              y: pageHeight - annotation.y - annotation.height,
               width: annotation.width,
               height: annotation.height,
             });
@@ -345,26 +351,14 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
     }
   };
 
-  // Clear all annotations and file
-  const clearAll = () => {
-    setPdfFile(null);
-    setAnnotations([]);
-    setActiveTool(null);
-    setSignatureImage(null);
-    setPageDimensions({});
-  };
-
   // Track page dimensions
   const handlePageLoadSuccess = (pageNumber: number, page: any) => {
     const viewport = page.getViewport({ scale: 1 });
-    setPageViewports((prev) => ({
-      ...prev,
-      [pageNumber]: {
-        width: viewport.width,
-        height: viewport.height,
-        rotation: viewport.rotation,
-      },
-    }));
+    setPageViewports(pageNumber, {
+      width: viewport.width,
+      height: viewport.height,
+      rotation: viewport.rotation,
+    });
   };
 
   const { getRootProps, getInputProps } = useDropzone({
@@ -384,7 +378,7 @@ const PDFAnnotator: React.FC<PDFAnnotatorProps> = ({
     return () => {
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isDrawing]);
+  }, [isDrawing, finishAnnotation]);
 
   // Close signature modal
   const handleCloseModal = () => {

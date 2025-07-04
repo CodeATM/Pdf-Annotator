@@ -30,7 +30,7 @@ export function SignupForm({
       await onRegister({
         payload: values,
         successCallback: () => {
-          router.push("/home");
+          router.push("/auth/verify");
         },
       });
       setSubmitting(false);

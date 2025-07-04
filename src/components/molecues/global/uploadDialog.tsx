@@ -34,13 +34,12 @@ export function FileUploadDialog({
     if (files && files.length > 0) {
       const file = files[0];
 
-      // Check file type
+      // Validate file type and size
       if (file.type !== "application/pdf") {
         setError("Only PDF files are allowed.");
         return;
       }
 
-      // Check file size (1MB = 1048576 bytes)
       if (file.size > 1048576) {
         setError("File size must not exceed 1MB.");
         return;
@@ -50,6 +49,7 @@ export function FileUploadDialog({
       setError(null);
       setSelectedFile(file);
 
+      // Prepare FormData and start upload
       const formData = new FormData();
       formData.append("pdf", file);
       setUploadProgress(0);
@@ -63,8 +63,16 @@ export function FileUploadDialog({
     }
   };
 
+  const handleClose = () => {
+    // Reset state when the modal is closed
+    setSelectedFile(null);
+    setError(null);
+    setUploadProgress(null);
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg mx-auto rounded-md">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
@@ -123,17 +131,22 @@ export function FileUploadDialog({
           </div>
         )}
         <DialogFooter className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose} className="cursor-pointer" >
+          <Button
+            variant="secondary"
+            onClick={handleClose}
+            className="cursor-pointer"
+          >
             Cancel
           </Button>
-          <Button
-            variant="default"
-            onClick={onClose}
-            className="cursor-pointer"
-            disabled={loading || (uploadProgress !== null && uploadProgress < 100)}
-          >
-            Proceed to edit
-          </Button>
+          {uploadProgress === 100 && (
+            <Button
+              variant="default"
+              onClick={handleClose}
+              className="cursor-pointer"
+            >
+              Proceed to edit
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

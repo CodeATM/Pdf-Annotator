@@ -27,6 +27,18 @@ class Service {
       }
     );
   }
+  
+  verifyOTP({ payload }: { payload: { otp: string } }) {
+    return axios.post(env.api.auth + "/activate-account", payload, {
+      withCredentials: true,
+    });
+  }
+  
+  resendOTP({ payload }: { payload: { email: string } }) {
+    return axios.post(env.api.auth + "/resend-otp", payload, {
+      withCredentials: true,
+    });
+  }
 }
 
 const AuthService = new Service();

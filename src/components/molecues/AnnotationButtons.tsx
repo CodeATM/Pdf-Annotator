@@ -9,6 +9,7 @@ import {
   ChevronDownIcon,
 } from "@radix-ui/react-icons";
 import { AnnotationType } from "@/lib/types";
+import { Button } from "../ui/button";
 
 export const ActionButtons = ({
   activeTool,
@@ -33,20 +34,22 @@ export const ActionButtons = ({
     >
       <Cross2Icon className="w-5 h-5" />
     </button>
-    <button
+    {/* <button
       className="p-2 rounded-md hover:bg-red-100 text-red-600 transition-colors"
       onClick={clearAll}
       title="Clear All"
     >
       <ResetIcon className="w-5 h-5" />
-    </button>
-    <button
-      className="flex items-center gap-2 px-3 py-2 bg-zinc-900 text-white rounded-md hover:bg-zinc-800 transition-colors disabled:opacity-50"
-      onClick={exportAnnotatedPdf}
+    </button> */}
+    <Button
+      variant="default"
+      // onClick={handleClose}
+      className="cursor-pointer"
       disabled={isLoading || !annotationsExist}
+      onClick={exportAnnotatedPdf}
     >
       <DownloadIcon className="w-5 h-5" />
       {isLoading ? "Exporting..." : "Export"}
-    </button>
+    </Button>
   </div>
 );

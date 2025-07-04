@@ -1,55 +1,24 @@
-"use client";
-import { useEffect } from "react";
-import { AppSidebar } from "@/components/app-sidebar";
-import { useUserStore } from "@/lib/userStore";
+import AppLayout from "@/components/molecues/global/Applayout";
+import React from "react";
+import { SectionCards } from "@/components/section-cards";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
 import { DataTable } from "@/components/data-table";
-import { SectionCards } from "@/components/section-cards";
-import { SiteHeader } from "@/components/site-header";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-
 import data from "./data.json";
 
-export default function Page() {
-  const { fetchUser } = useUserStore();
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const user = await fetchUser();
-        console.log(user);
-      } catch (error) {
-        console.error("Error fetching user:", error);
-      }
-    };
-
-    fetchData();
-  }, [fetchUser]);
-
+const page = () => {
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 16)",
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar variant="inset" />
-      <SidebarInset>
-        <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <SectionCards />
-              <div className="px-4 lg:px-6">
-                <ChartAreaInteractive />
-              </div>
-              <DataTable data={data} />
-            </div>
+    <div>
+      <AppLayout>
+        <div className="flex flex-col gap-4 md:gap-6 py-4 md:py-6 px-4 lg:px-6">
+          <SectionCards />
+          <div className="px-4 lg:px-6">
+            <ChartAreaInteractive />
           </div>
+          <DataTable data={data} />
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </AppLayout>
+    </div>
   );
-}
+};
+
+export default page;

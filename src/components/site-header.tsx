@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useUserStore } from "@/lib/userStore";
+import { useUserStore } from "@/hooks/stores/userStore";
 import { FileUploadDialog } from "./molecues/global/uploadDialog";
 import {
   DropdownMenu,
@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { UserIcon } from "lucide-react";
+import { BellIcon } from "@radix-ui/react-icons";
 
 export function SiteHeader() {
   const { user } = useUserStore();
@@ -31,6 +32,9 @@ export function SiteHeader() {
         />
         <h1 className="text-base font-medium">{`Welcome back, ${user?.firstName}`}</h1>
         <div className="ml-auto flex items-center gap-2">
+          <Button variant="ghost" className="cursor-pointer" >
+            <BellIcon />
+          </Button>
           <UserDropdown
             userName={user?.firstName || "Guest"}
             onProfileClick={() => console.log("Profile clicked")}

@@ -10,7 +10,7 @@ export default function LoginPage() {
           <div className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-md">
             <img src="/icons/logo.png" alt="" className="rounded-[1000px]" />
           </div>
-          Annotator
+          Luna
         </a>
         <SignupForm />
       </div>

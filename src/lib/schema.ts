@@ -35,3 +35,14 @@ export const RegisterinitialValues = {
   email: "",
   password: "",
 };
+
+export const VerifyValidationSchema = Yup.object({
+  token: Yup.string()
+    .length(6, "OTP must be exactly 6 digits")
+    .matches(/^[0-9]+$/, "OTP must contain only numbers")
+    .required("OTP is required"),
+});
+
+export const VerifyinitialValues = {
+  token: "",
+};

@@ -24,7 +24,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useUserStore } from "@/lib/userStore";
+import { useUserStore } from "@/hooks/stores/userStore";
 
 export function NavUser({}: {}) {
   const { isMobile } = useSidebar();

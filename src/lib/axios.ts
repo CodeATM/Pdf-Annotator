@@ -60,7 +60,7 @@ instance.interceptors.response.use(
       } catch (refreshError) {
         // Optionally: Redirect to login or handle logout
         console.error("Token refresh failed. Redirecting to login...");
-        window.location.href = "/login";
+        window.location.href = "/auth/login";
         return Promise.reject(refreshError);
       }
     }
