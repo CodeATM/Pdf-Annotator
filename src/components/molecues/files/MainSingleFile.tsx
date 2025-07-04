@@ -2,17 +2,14 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import usePdfStore from "@/hooks/stores/usePdfStore";
 import { NavToolbar } from "./SingleNav";
-import { Button } from "@/components/ui/button";
-import { ArrowLeftIcon, Share1Icon } from "@radix-ui/react-icons";
+// import { Button } from "@/components/ui/button";
+// import { ArrowLeftIcon, Share1Icon } from "@radix-ui/react-icons";
 import { useRouter } from "next/navigation";
 import PdfSection from "./PdfSection";
 import { PageRefs, SignaturePadRef, Annotation } from "@/lib/types";
 import { PDFDocument, rgb } from "pdf-lib";
-import ShareDialog from "../global/ShareDialog";
-import { useShareDialogStore } from "@/hooks/stores/otherStore";
 
 const MainSingleFile = ({ data }: { data: any }) => {
-  const { openDialog } = useShareDialogStore();
   const {
     pdfFile,
     setPdfFile,
@@ -366,34 +363,6 @@ const MainSingleFile = ({ data }: { data: any }) => {
       <div className="border-r-[1px] min-h-full flex-1 flex flex-col">
         {/* Sticky/fixed NavToolbar at the top */}
         <div className="z-10 sticky top-0 bg-white border-b-[1px]">
-          <div className="px-4 lg:px-6 py-2 md:py-2 border-b-[1px] flex justify-between items-center ">
-            <div className="flex gap-2  items-center">
-              <ArrowLeftIcon
-                className="size-5 cursor-pointer "
-                onClick={() => router.back()}
-              />
-              <h1 className="font-[600]  text-[16px] leading-[24px] ">
-                {data.title}
-              </h1>
-            </div>
-
-            <div className="flex gap-2 items-center">
-              <Button
-                variant="ghost"
-                className="cursor-pointer"
-                onClick={openDialog}
-              >
-                <Share1Icon />
-              </Button>
-              <Button
-                variant="default"
-                // onClick={handleClose}
-                className="cursor-pointer"
-              >
-                Save
-              </Button>
-            </div>
-          </div>
           <NavToolbar
             pdfFile={data.fileUrl}
             activeTool={activeTool}
@@ -432,8 +401,6 @@ const MainSingleFile = ({ data }: { data: any }) => {
           />
         </div>
       </div>
-
-      <ShareDialog />
     </>
   );
 };
