@@ -132,6 +132,12 @@ const PdfSection = (props: Props) => {
                         annotation,
                         index + 1
                       );
+                      
+                      // Get creator name
+                      const creatorName = annotation.createdBy 
+                        ? `${annotation.createdBy.firstName} ${annotation.createdBy.lastName}`
+                        : "Unknown";
+                      
                       if (annotation.type === "signature") {
                         return (
                           <div
@@ -144,28 +150,65 @@ const PdfSection = (props: Props) => {
                               alt="Signature"
                               className="w-full h-full object-contain"
                             />
+                            {/* Creator name underneath signature */}
+                            <div className="absolute -bottom-6 left-0 text-xs text-gray-600 bg-white px-1 rounded shadow-sm">
+                              {creatorName}
+                            </div>
                           </div>
                         );
                       }
+                      
+                      // Handle different annotation types
+                      if (annotation.type === "comment" || annotation.type === "note") {
+                        return (
+                          <div
+                            key={annotation.id}
+                            className="absolute flex flex-col items-center justify-center"
+                            style={{ ...style, pointerEvents: "none" }}
+                          >
+                            <div
+                              className="bg-yellow-200 border-2 border-yellow-400 rounded-md px-2 py-1 text-xs font-medium text-gray-800 shadow-sm"
+                              style={{
+                                backgroundColor: annotation.color || "rgba(255, 235, 60, 0.8)",
+                                borderColor: annotation.color || "rgba(255, 193, 7, 0.8)",
+                              }}
+                            >
+                              {annotation.content || (annotation.type === "comment" ? "💬" : "📝")}
+                            </div>
+                            {/* Creator name underneath comment/note */}
+                            <div className="mt-1 text-xs text-gray-600 bg-white px-1 rounded shadow-sm">
+                              {creatorName}
+                            </div>
+                          </div>
+                        );
+                      }
+                      
                       return (
                         <div
                           key={annotation.id}
-                          className="absolute border border-transparent"
-                          style={{
-                            ...style,
-                            backgroundColor:
-                              annotation.type === "highlight"
-                                ? annotation.color || props.selectedColor
-                                : "transparent",
-                            borderBottom:
-                              annotation.type === "underline"
-                                ? `2px solid ${
-                                    annotation.color || props.selectedColor
-                                  }`
-                                : "none",
-                            pointerEvents: "none",
-                          }}
-                        />
+                          className="absolute"
+                          style={{ ...style, pointerEvents: "none" }}
+                        >
+                          <div
+                            className="w-full h-full border border-transparent"
+                            style={{
+                              backgroundColor:
+                                annotation.type === "highlight"
+                                  ? annotation.color || props.selectedColor
+                                  : "transparent",
+                              borderBottom:
+                                annotation.type === "underline"
+                                  ? `2px solid ${
+                                      annotation.color || props.selectedColor
+                                    }`
+                                  : "none",
+                            }}
+                          />
+                          {/* Creator name underneath annotation */}
+                          <div className="absolute -bottom-6 left-0 text-xs text-gray-600 bg-white px-1 rounded shadow-sm">
+                            {creatorName}
+                          </div>
+                        </div>
                       );
                     })}
                 </div>

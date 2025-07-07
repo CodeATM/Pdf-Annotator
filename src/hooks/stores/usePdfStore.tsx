@@ -1,12 +1,13 @@
 // src/hooks/stores/usePdfStore.tsx
 import { create } from "zustand";
-import { Annotation, AnnotationType, PageViewport } from "@/lib/types";
+import { Annotation, AnnotationType, PageViewport, ApiAnnotation } from "@/lib/types";
 
 // State for the PDF viewer and annotator
 interface PdfStoreState {
   pdfFile: File | string | null;
   numPages: number | null;
   annotations: Annotation[];
+  savedAnnotationIds: Set<string>; // Track which annotations are already saved
   activeTool: AnnotationType | null;
   selectedColor: string;
   error: string | null;
@@ -27,6 +28,7 @@ interface PdfStoreState {
   setPdfFile: (file: File | string | null) => void;
   setNumPages: (pages: number) => void;
   addAnnotation: (annotation: Annotation) => void;
+  addSavedAnnotations: (annotations: Annotation[]) => void; // Add saved annotations from server
   handleUndo: () => void;
   removeAnnotation: (id: string) => void;
   clearAll: () => void;
@@ -49,12 +51,15 @@ interface PdfStoreState {
   setSignatureSize: (size: { width: number; height: number }) => void;
   setScale: (scale: number) => void;
   setPageViewports: (pageNumber: number, viewport: PageViewport) => void;
+  saveAnnotationsToServer: (fileId: string) => Promise<{ annotations: ApiAnnotation[] }>;
+  markAnnotationsAsSaved: (annotationIds: string[]) => void;
 }
 
 const usePdfStore = create<PdfStoreState>((set, get) => ({
   pdfFile: null,
   numPages: null,
   annotations: [],
+  savedAnnotationIds: new Set(),
   activeTool: null,
   selectedColor: "rgba(255, 235, 60, 0.5)", // Default highlight color (yellow)
   error: null,
@@ -81,24 +86,43 @@ const usePdfStore = create<PdfStoreState>((set, get) => ({
   // Set the total number of pages
   setNumPages: (pages) => set({ numPages: pages }),
 
-  // Add an annotation to the list
+  // Add a new annotation (unsaved)
   addAnnotation: (annotation) =>
-    set((state) => ({ annotations: [...state.annotations, annotation] })),
+    set((state) => ({
+      annotations: [...state.annotations, annotation],
+    })),
 
-  // Undo the last annotation
+  // Add saved annotations from server (these are already saved)
+  addSavedAnnotations: (annotations) =>
+    set((state) => {
+      const newSavedIds = new Set(state.savedAnnotationIds);
+      annotations.forEach(ann => newSavedIds.add(ann.id));
+      
+      return {
+        annotations: [...state.annotations, ...annotations],
+        savedAnnotationIds: newSavedIds,
+      };
+    }),
+
+  // Undo last annotation
   handleUndo: () =>
     set((state) => ({
       annotations: state.annotations.slice(0, -1),
     })),
 
-  // Remove a specific annotation by its ID
+  // Remove annotation by ID
   removeAnnotation: (id) =>
     set((state) => ({
       annotations: state.annotations.filter((ann) => ann.id !== id),
+      savedAnnotationIds: new Set([...state.savedAnnotationIds].filter(savedId => savedId !== id)),
     })),
 
   // Clear all annotations
-  clearAll: () => set({ annotations: [] }),
+  clearAll: () =>
+    set({
+      annotations: [],
+      savedAnnotationIds: new Set(),
+    }),
 
   // Set the active annotation tool
   setActiveTool: (tool) => set({ activeTool: tool }),
@@ -135,6 +159,43 @@ const usePdfStore = create<PdfStoreState>((set, get) => ({
     set((state) => ({
       pageViewports: { ...state.pageViewports, [pageNumber]: viewport },
     })),
+
+  // Save annotations to server
+  saveAnnotationsToServer: async (fileId: string) => {
+    const state = get();
+    // Only get unsaved annotations
+    const unsavedAnnotations = state.annotations.filter(
+      annotation => !state.savedAnnotationIds.has(annotation.id)
+    );
+    
+    if (unsavedAnnotations.length === 0) {
+      throw new Error("No new annotations to save");
+    }
+
+    const apiAnnotations: ApiAnnotation[] = unsavedAnnotations.map((annotation) => ({
+      fileId: fileId,
+      pageNumber: annotation.pageNumber,
+      content: annotation.content || annotation.textContent,
+      position: { x: annotation.x, y: annotation.y },
+      type: annotation.type,
+      color: annotation.color,
+      width: annotation.width,
+      height: annotation.height,
+      imageData: annotation.imageData,
+    }));
+
+    return {
+      annotations: apiAnnotations,
+    };
+  },
+
+  // Mark annotations as saved (called after successful save)
+  markAnnotationsAsSaved: (annotationIds: string[]) =>
+    set((state) => {
+      const newSavedIds = new Set(state.savedAnnotationIds);
+      annotationIds.forEach(id => newSavedIds.add(id));
+      return { savedAnnotationIds: newSavedIds };
+    }),
 }));
 
 export default usePdfStore;

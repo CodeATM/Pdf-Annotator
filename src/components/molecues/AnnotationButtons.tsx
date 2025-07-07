@@ -9,6 +9,7 @@ import {
   ChevronDownIcon,
   Share1Icon,
 } from "@radix-ui/react-icons";
+import { PanelLeftIcon } from "lucide-react";
 import { AnnotationType } from "@/lib/types";
 import { Button } from "../ui/button";
 import { useShareDialogStore } from "@/hooks/stores/otherStore";
@@ -21,6 +22,9 @@ export const ActionButtons = ({
   isLoading,
   annotationsExist,
   clearAll,
+  onSave,
+  sidebarVisible,
+  setSidebarVisible,
 }: {
   activeTool: AnnotationType | null;
   setActiveTool: (tool: AnnotationType | null) => void;
@@ -28,6 +32,9 @@ export const ActionButtons = ({
   isLoading: boolean;
   annotationsExist: boolean;
   clearAll: () => void;
+  onSave: () => void;
+  sidebarVisible: boolean;
+  setSidebarVisible: (visible: boolean) => void;
 }) => {
   const { openDialog } = useShareDialogStore();
   return (
@@ -63,10 +70,19 @@ export const ActionButtons = ({
         </Button>
         <Button
           variant="default"
-          // onClick={handleClose}
+          onClick={onSave}
           className="cursor-pointer"
+          disabled={isLoading || !annotationsExist}
         >
           Save
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => setSidebarVisible(!sidebarVisible)}
+          className="cursor-pointer"
+          title={sidebarVisible ? "Hide Sidebar" : "Show Sidebar"}
+        >
+          <PanelLeftIcon className="w-5 h-5 text-[#181818] cursor-pointer" />
         </Button>
       </div>
       <ShareDialog />

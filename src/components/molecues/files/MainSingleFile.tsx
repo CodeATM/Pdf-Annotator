@@ -1,15 +1,28 @@
 "use client";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import usePdfStore from "@/hooks/stores/usePdfStore";
+import { useUserStore } from "@/hooks/stores/userStore";
 import { NavToolbar } from "./SingleNav";
 // import { Button } from "@/components/ui/button";
 // import { ArrowLeftIcon, Share1Icon } from "@radix-ui/react-icons";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import PdfSection from "./PdfSection";
-import { PageRefs, SignaturePadRef, Annotation } from "@/lib/types";
+import { PageRefs, SignaturePadRef, Annotation, AnnotationType } from "@/lib/types";
 import { PDFDocument, rgb } from "pdf-lib";
+import { showSuccessToast, showErrorToast } from "@/utils/toasters";
+import { useCreateAnnotation } from "@/hooks/apis/annotations";
+import { SignatureModal } from "../SignatureModal";
 
-const MainSingleFile = ({ data }: { data: any }) => {
+const MainSingleFile = ({ 
+  data, 
+  sidebarVisible, 
+  setSidebarVisible 
+}: { 
+  data: any; 
+  sidebarVisible: boolean; 
+  setSidebarVisible: (visible: boolean) => void; 
+}) => {
+  const { user } = useUserStore();
   const {
     pdfFile,
     setPdfFile,
@@ -42,9 +55,14 @@ const MainSingleFile = ({ data }: { data: any }) => {
     removeAnnotation,
     clearAll,
     addAnnotation,
+    addSavedAnnotations,
+    saveAnnotationsToServer,
+    markAnnotationsAsSaved,
   } = usePdfStore();
 
   const router = useRouter();
+  const params = useParams<{ fileId: string }>();
+  const { loading: saveLoading, onCreateAnnotation } = useCreateAnnotation();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<PageRefs>({});
@@ -52,9 +70,60 @@ const MainSingleFile = ({ data }: { data: any }) => {
 
   useEffect(() => {
     if (data.fileUrl) {
-      setPdfFile(data.pdfUrl);
+      setPdfFile(data.fileUrl);
     }
   }, [data.fileUrl, setPdfFile]);
+
+  // Load annotations from server response
+  useEffect(() => {
+    if (data?.annotations && Array.isArray(data.annotations)) {
+      // Convert server annotations to local annotation format
+      const serverAnnotations = data.annotations.map((serverAnn: any) => {
+        // Determine appropriate dimensions based on annotation type
+        let width = serverAnn.width || 100;
+        let height = serverAnn.height || 20;
+        
+        if (serverAnn.type === "comment" || serverAnn.type === "note") {
+          // For text-based annotations, use smaller dimensions
+          width = serverAnn.width || 150;
+          height = serverAnn.height || 30;
+        } else if (serverAnn.type === "highlight") {
+          // For highlights, use the provided dimensions or defaults
+          width = serverAnn.width || 200;
+          height = serverAnn.height || 25;
+        } else if (serverAnn.type === "underline") {
+          // For underlines, use width but minimal height
+          width = serverAnn.width || 200;
+          height = serverAnn.height || 3;
+        } else if (serverAnn.type === "signature") {
+          // For signatures, use provided dimensions or defaults
+          width = serverAnn.width || 150;
+          height = serverAnn.height || 100;
+        }
+
+        const localAnnotation: Annotation = {
+          id: serverAnn._id || `server-${Date.now()}-${Math.random()}`,
+          type: serverAnn.type as AnnotationType,
+          pageNumber: serverAnn.pageNumber,
+          x: serverAnn.position?.x || 0,
+          y: serverAnn.position?.y || 0,
+          width: width,
+          height: height,
+          color: serverAnn.color || "rgba(255, 235, 60, 0.5)",
+          content: serverAnn.content,
+          imageData: serverAnn.imageData,
+          createdBy: serverAnn.createdBy,
+        };
+        return localAnnotation;
+      });
+
+      // Clear existing annotations and add server annotations as saved
+      clearAll();
+      addSavedAnnotations(serverAnnotations);
+
+      console.log("Loaded annotations from server:", serverAnnotations);
+    }
+  }, [data?.annotations, clearAll, addSavedAnnotations]);
 
   // Calculate scale based on container size
   useEffect(() => {
@@ -106,6 +175,12 @@ const MainSingleFile = ({ data }: { data: any }) => {
       width: 0,
       height: 0,
       color: selectedColor, // Store current color with annotation when created
+      createdBy: user ? {
+        _id: user._id || user.id,
+        firstName: user.firstName || user.firstname || "Unknown",
+        lastName: user.lastName || user.lastname || "User",
+        email: user.email,
+      } : undefined,
     };
 
     setCurrentAnnotation(newAnnotation);
@@ -181,6 +256,53 @@ const MainSingleFile = ({ data }: { data: any }) => {
     finishAnnotation();
   };
 
+  // Signature functions
+  const handleSaveSignature = () => {
+    if (signaturePadRef.current && signaturePosition) {
+      const signatureDataUrl = signaturePadRef.current.toDataURL();
+      const viewport = pageViewports[signaturePosition.pageNumber];
+      if (!viewport) return;
+
+      const newAnnotation: Annotation = {
+        id: `ann-${Date.now()}`,
+        type: "signature",
+        pageNumber: signaturePosition.pageNumber,
+        x: signaturePosition.x,
+        y: signaturePosition.y,
+        width:
+          (signatureSize.width / scale) *
+          (viewport.width / signaturePosition.pageWidth),
+        height:
+          (signatureSize.height / scale) *
+          (viewport.height / signaturePosition.pageHeight),
+        imageData: signatureDataUrl,
+        color: selectedColor,
+        createdBy: user ? {
+          _id: user._id || user.id,
+          firstName: user.firstName || user.firstname || "Unknown",
+          lastName: user.lastName || user.lastname || "User",
+          email: user.email,
+        } : undefined,
+      };
+
+      addAnnotation(newAnnotation);
+      setSignaturePosition(null);
+      setShowSignatureModal(false);
+      setActiveTool(null);
+      signaturePadRef.current.clear();
+    }
+  };
+
+  const handleClearSignature = () => {
+    if (signaturePadRef.current) signaturePadRef.current.clear();
+  };
+
+  const handleCloseModal = () => {
+    setShowSignatureModal(false);
+    setSignaturePosition(null);
+    setActiveTool(null);
+  };
+
   // Export annotated PDF
   const exportAnnotatedPdf = async () => {
     if (!pdfFile) return;
@@ -196,8 +318,17 @@ const MainSingleFile = ({ data }: { data: any }) => {
       const pdfDoc = await PDFDocument.load(existingPdfBytes);
       const pages = pdfDoc.getPages();
 
-      for (const annotation of annotations) {
+      // Filter annotations to only include highlight, underline, and signature
+      const exportableAnnotations = annotations.filter(annotation => 
+        annotation.type === "highlight" || 
+        annotation.type === "underline" || 
+        annotation.type === "signature"
+      );
+
+      for (const annotation of exportableAnnotations) {
         const page = pages[annotation.pageNumber - 1];
+        if (!page) continue;
+
         const { width: pageWidth, height: pageHeight } = page.getSize();
 
         // Normalize annotation rectangle to handle negative dimensions
@@ -278,10 +409,21 @@ const MainSingleFile = ({ data }: { data: any }) => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       setIsLoading(false);
+      
+      // Show success message
+      showSuccessToast({
+        message: "PDF Exported Successfully",
+        description: `Exported PDF with ${exportableAnnotations.length} annotations`,
+      });
     } catch (err) {
       console.error("Error exporting PDF:", err);
       setError("Error exporting PDF. Please try again.");
       setIsLoading(false);
+      
+      showErrorToast({
+        message: "Export Failed",
+        description: "Failed to export PDF. Please try again.",
+      });
     }
   };
 
@@ -305,6 +447,53 @@ const MainSingleFile = ({ data }: { data: any }) => {
       document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isDrawing, finishAnnotation]);
+
+  // Handle save annotations
+  const handleSaveAnnotations = async () => {
+    if (!params.fileId) {
+      showErrorToast({
+        message: "Error",
+        description: "File ID not found",
+      });
+      return;
+    }
+
+    try {
+      const annotationData = await saveAnnotationsToServer(params.fileId);
+      
+      await onCreateAnnotation({
+        payload: {
+          annotations: annotationData.annotations,
+        },
+        successCallback: () => {
+          // Mark the annotations as saved after successful save
+          // Get the IDs of annotations that were just saved
+          const savedAnnotationIds = annotationData.annotations.map(ann => {
+            // Find the corresponding local annotation by matching properties
+            const localAnnotation = annotations.find(localAnn => 
+              localAnn.pageNumber === ann.pageNumber &&
+              localAnn.x === ann.position.x &&
+              localAnn.y === ann.position.y &&
+              localAnn.type === ann.type
+            );
+            return localAnnotation?.id;
+          }).filter(Boolean) as string[];
+          
+          if (savedAnnotationIds.length > 0) {
+            markAnnotationsAsSaved(savedAnnotationIds);
+          }
+          
+          console.log("Annotations saved successfully");
+        },
+      });
+    } catch (error: any) {
+      console.error("Failed to save annotations:", error);
+      showErrorToast({
+        message: "Error",
+        description: error.message || "Failed to save annotations",
+      });
+    }
+  };
 
   // Updated renderAnnotation with overflow prevention
   const renderAnnotation = (
@@ -369,11 +558,19 @@ const MainSingleFile = ({ data }: { data: any }) => {
             setActiveTool={setActiveTool}
             handleUndo={handleUndo}
             exportAnnotatedPdf={exportAnnotatedPdf}
-            isLoading={isLoading}
+            isLoading={isLoading || saveLoading}
             annotations={annotations}
             clearAll={clearAll}
             selectedColor={selectedColor}
             setSelectedColor={setSelectedColor}
+            onSave={handleSaveAnnotations}
+            exportableAnnotationsExist={annotations.some(annotation => 
+              annotation.type === "highlight" || 
+              annotation.type === "underline" || 
+              annotation.type === "signature"
+            )}
+            sidebarVisible={sidebarVisible}
+            setSidebarVisible={setSidebarVisible}
           />
         </div>
         {/* Scrollable PDF section below the toolbar */}
@@ -401,6 +598,17 @@ const MainSingleFile = ({ data }: { data: any }) => {
           />
         </div>
       </div>
+      
+      {/* Signature Modal */}
+      <SignatureModal
+        showSignatureModal={showSignatureModal}
+        handleCloseModal={handleCloseModal}
+        signaturePadRef={signaturePadRef}
+        signatureSize={signatureSize}
+        setSignatureSize={setSignatureSize}
+        handleClearSignature={handleClearSignature}
+        handleSaveSignature={handleSaveSignature}
+      />
     </>
   );
 };
