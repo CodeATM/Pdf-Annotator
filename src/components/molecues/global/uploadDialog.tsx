@@ -1,5 +1,4 @@
 "use client";
-
 import {
   Dialog,
   DialogContent,
@@ -10,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useUploadPDF } from "@/hooks/apis/file";
+import { useRouter } from "next/navigation";
 
 interface FileUploadDialogProps {
   open: boolean;
@@ -24,10 +24,11 @@ export function FileUploadDialog({
   onFileUpload,
   title = "Upload and attach files",
 }: FileUploadDialogProps) {
+  const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const { loading, onUpload } = useUploadPDF();
+  const { loading, onUpload, data } = useUploadPDF();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -40,8 +41,8 @@ export function FileUploadDialog({
         return;
       }
 
-      if (file.size > 1048576) {
-        setError("File size must not exceed 1MB.");
+      if (file.size > 10048576) {
+        setError("File size must not exceed 10MB.");
         return;
       }
 
@@ -141,7 +142,7 @@ export function FileUploadDialog({
           {uploadProgress === 100 && (
             <Button
               variant="default"
-              onClick={handleClose}
+              onClick={() => router.push(`/docs/${data?.fileId}`)}
               className="cursor-pointer"
             >
               Proceed to edit

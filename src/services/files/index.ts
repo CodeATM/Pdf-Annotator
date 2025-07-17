@@ -8,6 +8,10 @@ class Service {
   getSinglePdf({ fileId }: { fileId: string }) {
     return instance.get(env.api.file + "/" + fileId);
   }
+
+  getFiles() {
+    return instance.get(env.api.file + "/files");
+  }
 }
 
 const FileService = new Service();

@@ -9,6 +9,7 @@ import {
 } from "@tabler/icons-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +29,29 @@ import { useUserStore } from "@/hooks/stores/userStore";
 
 export function NavUser({}: {}) {
   const { isMobile } = useSidebar();
-  const { user } = useUserStore();
+  const { user, loading } = useUserStore();
+
+  // Show skeleton when loading or user is null
+  if (loading || !user) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            size="lg"
+            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            disabled
+          >
+            <Skeleton className="h-8 w-8 rounded-lg" />
+            <div className="grid flex-1 text-left text-sm leading-tight gap-1">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+            <Skeleton className="ml-auto size-4" />
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    );
+  }
 
   return (
     <SidebarMenu>

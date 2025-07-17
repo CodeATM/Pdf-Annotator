@@ -16,8 +16,6 @@ export const NavToolbar = ({
   setSelectedColor,
   onSave,
   exportableAnnotationsExist,
-  sidebarVisible,
-  setSidebarVisible,
 }: {
   pdfFile: File | string | null;
   activeTool: AnnotationType | null;
@@ -31,8 +29,6 @@ export const NavToolbar = ({
   clearAll: () => void;
   onSave: () => void;
   exportableAnnotationsExist?: boolean;
-  sidebarVisible: boolean;
-  setSidebarVisible: (visible: boolean) => void;
 }) => (
   <div className="flex items-center gap-2 py-1 md:py-2 px-4 lg:px-6">
       <>
@@ -53,8 +49,6 @@ export const NavToolbar = ({
           annotationsExist={exportableAnnotationsExist ?? annotations.length > 0}
           clearAll={clearAll}
           onSave={onSave}
-          sidebarVisible={sidebarVisible}
-          setSidebarVisible={setSidebarVisible}
         />
       </>
   </div>

@@ -3,6 +3,25 @@ import React, { useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { formatDistanceToNow } from "date-fns";
+
+// Helper to generate a color from a string (user's name)
+function stringToColor(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const color = `hsl(${hash % 360}, 70%, 60%)`;
+  return color;
+}
+
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 // Custom scrollbar styles
@@ -132,12 +151,77 @@ const PdfSection = (props: Props) => {
                         annotation,
                         index + 1
                       );
-                      
-                      // Get creator name
-                      const creatorName = annotation.createdBy 
-                        ? `${annotation.createdBy.firstName} ${annotation.createdBy.lastName}`
+                      const creator = annotation.createdBy;
+                      const creatorName = creator
+                        ? `${creator.firstName} ${creator.lastName}`
                         : "Unknown";
-                      
+                      const creatorEmail = creator?.email || "";
+                      // Always use annotation.createdAt
+                      const createdAt = annotation.createdAt;
+                      let createdTime;
+                      if (createdAt) {
+                        try {
+                          const d = new Date(createdAt);
+                          if (!isNaN(d.getTime())) {
+                            createdTime = formatDistanceToNow(d, {
+                              addSuffix: true,
+                            });
+                          }
+                        } catch {}
+                      }
+
+                      // Helper for avatar fallback
+                      const avatarLetter = creator?.firstName
+                        ? creator.firstName[0]
+                        : "?";
+                      const avatarBg = stringToColor(creatorName);
+
+                      // Avatar hover card
+                      const AvatarHover = (
+                        <TooltipProvider delayDuration={100}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div
+                                className="absolute z-20 top-0 right-0 cursor-pointer group"
+                                style={{ pointerEvents: "auto" }}
+                              >
+                                <Avatar
+                                  className="h-5 w-5 border-2 border-white shadow"
+                                  style={{ background: avatarBg }}
+                                >
+                                  <AvatarImage
+                                    src={creator?.avatarUrl || ""}
+                                    alt={creatorName}
+                                  />
+                                  <AvatarFallback className="text-white font-bold text-xs flex items-center justify-center">
+                                    {avatarLetter}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="top"
+                              sideOffset={8}
+                              className="bg-white text-gray-900 shadow-lg border px-4 py-2 rounded-lg min-w-48 max-w-xs"
+                            >
+                              <div className="font-semibold text-base mb-1">
+                                {creatorName}
+                              </div>
+                              {creatorEmail && (
+                                <div className="text-xs text-gray-500 mb-1">
+                                  {creatorEmail}
+                                </div>
+                              )}
+                              {createdTime && (
+                                <div className="text-xs text-gray-400">
+                                  Added: {createdTime}
+                                </div>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+
                       if (annotation.type === "signature") {
                         return (
                           <div
@@ -150,16 +234,16 @@ const PdfSection = (props: Props) => {
                               alt="Signature"
                               className="w-full h-full object-contain"
                             />
-                            {/* Creator name underneath signature */}
-                            <div className="absolute -bottom-6 left-0 text-xs text-gray-600 bg-white px-1 rounded shadow-sm">
-                              {creatorName}
-                            </div>
+                            {AvatarHover}
                           </div>
                         );
                       }
-                      
+
                       // Handle different annotation types
-                      if (annotation.type === "comment" || annotation.type === "note") {
+                      if (
+                        annotation.type === "comment" ||
+                        annotation.type === "note"
+                      ) {
                         return (
                           <div
                             key={annotation.id}
@@ -169,20 +253,20 @@ const PdfSection = (props: Props) => {
                             <div
                               className="bg-yellow-200 border-2 border-yellow-400 rounded-md px-2 py-1 text-xs font-medium text-gray-800 shadow-sm"
                               style={{
-                                backgroundColor: annotation.color || "rgba(255, 235, 60, 0.8)",
-                                borderColor: annotation.color || "rgba(255, 193, 7, 0.8)",
+                                backgroundColor:
+                                  annotation.color || "rgba(255, 235, 60, 0.8)",
+                                borderColor:
+                                  annotation.color || "rgba(255, 193, 7, 0.8)",
                               }}
                             >
-                              {annotation.content || (annotation.type === "comment" ? "💬" : "📝")}
+                              {annotation.content ||
+                                (annotation.type === "comment" ? "💬" : "📝")}
                             </div>
-                            {/* Creator name underneath comment/note */}
-                            <div className="mt-1 text-xs text-gray-600 bg-white px-1 rounded shadow-sm">
-                              {creatorName}
-                            </div>
+                            {AvatarHover}
                           </div>
                         );
                       }
-                      
+
                       return (
                         <div
                           key={annotation.id}
@@ -204,10 +288,7 @@ const PdfSection = (props: Props) => {
                                   : "none",
                             }}
                           />
-                          {/* Creator name underneath annotation */}
-                          <div className="absolute -bottom-6 left-0 text-xs text-gray-600 bg-white px-1 rounded shadow-sm">
-                            {creatorName}
-                          </div>
+                          {AvatarHover}
                         </div>
                       );
                     })}

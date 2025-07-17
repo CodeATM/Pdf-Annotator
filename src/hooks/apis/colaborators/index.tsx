@@ -2,50 +2,13 @@
 import FileService from "@/services/files";
 import { useState, useEffect } from "react";
 import { showErrorToast, showSuccessToast } from "@/utils/toasters";
+import CollaborationService from "@/services/collaboration";
 
-export const useUploadPDF = () => {
-  const [loading, setLoading] = useState(false);
+export const useGetCollaborators = () => {
   const [data, setData] = useState<any>({});
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const onUpload = async ({
-    payload,
-    successCallback,
-  }: {
-    payload: {
-      file: any;
-    };
-    successCallback?: () => void;
-  }) => {
-    setLoading(true);
-    try {
-      const res = await FileService.uploadFile({ payload });
-
-      setData(res.data.data);
-
-      successCallback?.();
-    } catch (error: any) {
-      const apiResponse = error.response?.data || {
-        message: "An unknown error occurred",
-        description: "",
-      };
-
-      showErrorToast({
-        message: apiResponse.message,
-        description: apiResponse.description,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return { loading, data, onUpload };
-};
-
-export const useGetFile = () => {
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<any>({});
-
-  const onGetFile = async ({
+  const onGetCollaborators = async ({
     fileId,
     successCallback,
     errorCallback,
@@ -56,48 +19,8 @@ export const useGetFile = () => {
   }) => {
     setLoading(true);
     try {
-      const response = await FileService.getSinglePdf({ fileId });
-
-      setData(response.data.data);
-      showSuccessToast({ message: "File fetched successfully" });
-
-      if (successCallback) successCallback();
-    } catch (error: any) {
-      const apiResponse = error.response?.data || {
-        message: "An unknown error occurred",
-        description: "",
-      };
-
-      showErrorToast({
-        message: apiResponse.message,
-        description: apiResponse.description,
-      });
-      if (errorCallback) errorCallback(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return { loading, onGetFile, data };
-};
-
-
-export const useGetAllFiles = () => {
-  const [loading, setLoading] = useState<boolean>(false);
-  const [data, setData] = useState<any[]>([]); // assuming it's an array of files
-
-  const onGetFiles = async ({
-    successCallback,
-    errorCallback,
-  }: {
-    successCallback?: () => void;
-    errorCallback?: (error: any) => void;
-  } = {}) => {
-    setLoading(true);
-    try {
-      const response = await FileService.getFiles();
+      const response = await CollaborationService.getCollaboratiors({ fileId });
       setData(response.data?.data);
-      if (successCallback) successCallback();
     } catch (error: any) {
       const apiResponse = error.response?.data || {
         message: "An unknown error occurred",
@@ -114,8 +37,97 @@ export const useGetAllFiles = () => {
   };
 
   useEffect(() => {
-    onGetFiles(); // Automatically fetch on mount
+    onGetCollaborators;
   }, []);
 
-  return { loading, onGetFiles, data };
+  return { loading, onGetCollaborators, data };
+};
+
+export const useUpdateRole = () => {
+  const [data, setData] = useState<any>({});
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const onUpdate = async ({
+    fileId,
+    payload,
+    successCallback,
+    errorCallback,
+  }: {
+    fileId: string;
+    payload: any;
+    successCallback?: () => void;
+    errorCallback?: (error: any) => void;
+  }) => {
+    setLoading(true);
+    try {
+      const response = await CollaborationService.updateUserRole({
+        fileId,
+        payload,
+      });
+      setData(response.data?.data);
+      if (response.data && response.data.error === false) {
+        showSuccessToast({ message: response.data.message || "Role updated successfully" });
+        if (successCallback) successCallback();
+      }
+    } catch (error: any) {
+      const apiResponse = error.response?.data || {
+        message: "An unknown error occurred",
+        description: "",
+      };
+      showErrorToast({
+        message: apiResponse.message,
+        description: apiResponse.description,
+      });
+      if (errorCallback) errorCallback(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { loading, onUpdate, data };
+};
+
+export const useRemoveCollaborator = () => {
+  const [loading, setLoading] = useState(false);
+
+  const onRemoveCollaborator = async ({
+    fileId,
+    userId,
+    successCallback,
+    errorCallback,
+  }: {
+    fileId: string;
+    userId: string;
+    successCallback?: () => void;
+    errorCallback?: (error: any) => void;
+  }) => {
+    setLoading(true);
+    try {
+      const response = await CollaborationService.removeCollaborator({
+        fileId,
+        userId,
+      });
+      if (response.data && response.data.error === false) {
+        showSuccessToast({
+          message: response.data.message || "Collaborator removed successfully",
+          description: "The collaborator has been removed from the file"
+        });
+        if (successCallback) successCallback();
+      }
+    } catch (error: any) {
+      const apiResponse = error.response?.data || {
+        message: "An unknown error occurred",
+        description: "",
+      };
+      showErrorToast({
+        message: apiResponse.message,
+        description: apiResponse.description,
+      });
+      if (errorCallback) errorCallback(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { loading, onRemoveCollaborator };
 };

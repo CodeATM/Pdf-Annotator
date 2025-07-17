@@ -5,6 +5,7 @@ const api = (isProduction: boolean) => ({
   user: `${BASE_URL}/api/v1/user`,
   file: `${BASE_URL}/api/v1/file`,
   annotation: `${BASE_URL}/api/v1/anon`,
+  collaboration: `${BASE_URL}/api/v1/col`,
 });
 
 export default api;

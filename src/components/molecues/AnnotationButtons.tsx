@@ -9,11 +9,12 @@ import {
   ChevronDownIcon,
   Share1Icon,
 } from "@radix-ui/react-icons";
-import { PanelLeftIcon } from "lucide-react";
 import { AnnotationType } from "@/lib/types";
 import { Button } from "../ui/button";
 import { useShareDialogStore } from "@/hooks/stores/otherStore";
 import ShareDialog from "./global/ShareDialog";
+import env from "@/config/env";
+import { useRouter, useParams } from "next/navigation";
 
 export const ActionButtons = ({
   activeTool,
@@ -23,8 +24,6 @@ export const ActionButtons = ({
   annotationsExist,
   clearAll,
   onSave,
-  sidebarVisible,
-  setSidebarVisible,
 }: {
   activeTool: AnnotationType | null;
   setActiveTool: (tool: AnnotationType | null) => void;
@@ -33,10 +32,9 @@ export const ActionButtons = ({
   annotationsExist: boolean;
   clearAll: () => void;
   onSave: () => void;
-  sidebarVisible: boolean;
-  setSidebarVisible: (visible: boolean) => void;
 }) => {
   const { openDialog } = useShareDialogStore();
+  const params = useParams<{ fileId: string }>();
   return (
     <>
       {" "}
@@ -55,7 +53,18 @@ export const ActionButtons = ({
     >
       <ResetIcon className="w-5 h-5" />
     </button> */}
-        <Button variant="ghost" className="cursor-pointer" onClick={openDialog}>
+        <Button
+          variant="ghost"
+          className="cursor-pointer"
+          onClick={() => {
+            if (params.fileId) {
+              const link = `${process.env.NEXT_PUBLIC_SHARABLE_FRONTEND_URL}/docs/${params.fileId}`;
+              openDialog(link);
+            } else {
+              openDialog();
+            }
+          }}
+        >
           <Share1Icon />
         </Button>
 
@@ -75,14 +84,6 @@ export const ActionButtons = ({
           disabled={isLoading || !annotationsExist}
         >
           Save
-        </Button>
-        <Button
-          variant="ghost"
-          onClick={() => setSidebarVisible(!sidebarVisible)}
-          className="cursor-pointer"
-          title={sidebarVisible ? "Hide Sidebar" : "Show Sidebar"}
-        >
-          <PanelLeftIcon className="w-5 h-5 text-[#181818] cursor-pointer" />
         </Button>
       </div>
       <ShareDialog />

@@ -13,15 +13,7 @@ import { showSuccessToast, showErrorToast } from "@/utils/toasters";
 import { useCreateAnnotation } from "@/hooks/apis/annotations";
 import { SignatureModal } from "../SignatureModal";
 
-const MainSingleFile = ({ 
-  data, 
-  sidebarVisible, 
-  setSidebarVisible 
-}: { 
-  data: any; 
-  sidebarVisible: boolean; 
-  setSidebarVisible: (visible: boolean) => void; 
-}) => {
+const MainSingleFile = ({ data }: { data: any }) => {
   const { user } = useUserStore();
   const {
     pdfFile,
@@ -569,8 +561,6 @@ const MainSingleFile = ({
               annotation.type === "underline" || 
               annotation.type === "signature"
             )}
-            sidebarVisible={sidebarVisible}
-            setSidebarVisible={setSidebarVisible}
           />
         </div>
         {/* Scrollable PDF section below the toolbar */}

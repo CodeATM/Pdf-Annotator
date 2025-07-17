@@ -45,18 +45,18 @@ const data = {
       url: "#",
       icon: IconDashboard,
     },
+    // {
+    //   title: "Lifecycle",
+    //   url: "#",
+    //   icon: IconListDetails,
+    // },
+    // {
+    //   title: "Analytics",
+    //   url: "#",
+    //   icon: IconChartBar,
+    // },
     {
-      title: "Lifecycle",
-      url: "#",
-      icon: IconListDetails,
-    },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: IconChartBar,
-    },
-    {
-      title: "Projects",
+      title: "Shared with me",
       url: "#",
       icon: IconFolder,
     },
@@ -125,11 +125,11 @@ const data = {
       url: "#",
       icon: IconHelp,
     },
-    {
-      title: "Search",
-      url: "#",
-      icon: IconSearch,
-    },
+    // {
+    //   title: "Search",
+    //   url: "#",
+    //   icon: IconSearch,
+    // },
   ],
   documents: [
     {
@@ -162,7 +162,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <a href="#">
               <img src="/icons/logo.png" alt="" className="!size-5 rounded-[4px]" />
-                <span className="text-base font-semibold">Annotator</span>
+                <span className="text-base font-semibold">Luna</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>

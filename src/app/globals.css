@@ -36,15 +36,68 @@ body {
 ---break--- */
 /* e.g., in styles/globals.css or tailwind.css */
 .custom-scroll::-webkit-scrollbar {
-  width: 2px;
+  width: 4px;
 }
 
 .custom-scroll::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
 }
 
 .custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Thin scrollbar for Webkit browsers (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e5e7eb; /* Tailwind gray-200 */
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #d1d5db; /* Tailwind gray-300 - slightly darker on hover */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* For Firefox */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #e5e7eb transparent;
+}
+
+/* Custom scrollbar for specific elements */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Even thinner scrollbar for sidebar and modals */
+.sidebar-scroll::-webkit-scrollbar {
+  width: 2px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 1px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 
