@@ -13,8 +13,12 @@ import { useEditPdfDialogStore } from "@/hooks/stores/otherStore";
 import React, { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { FileText } from "lucide-react";
+import { useEditFile, useGetFile } from "@/hooks/apis/file";
+import { useFormik } from "formik";
+import * as Yup from "yup";
+import { useFileMetaStore } from "@/hooks/stores/otherStore";
 
-export default function EditPdfDialog() {
+export default function EditPdfDialog({ onFileUpdated }: { onFileUpdated?: () => void }) {
   const { isOpen, closeDialog, fileData } = useEditPdfDialogStore();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -41,10 +45,9 @@ export default function EditPdfDialog() {
         <div className="border-b border-zinc-100 mx-7 mb-2" />
         <div className="flex-1 flex flex-col px-7 pb-2">
           <EditForm
-            title={title}
-            setTitle={setTitle}
-            description={description}
-            setDescription={setDescription}
+            fileData={fileData}
+            closeDialog={closeDialog}
+            onFileUpdated={onFileUpdated}
           />
         </div>
       </DialogContent>
@@ -52,41 +55,93 @@ export default function EditPdfDialog() {
   );
 }
 
-const EditForm = ({ title, setTitle, description, setDescription }: any) => {
-  // Add a save handler
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Replace this with your API call or state update logic
-    console.log("Saving changes:", { title, description });
-  };
+const validationSchema = Yup.object({
+  title: Yup.string().required("Title is required").max(100, "Title too long"),
+  description: Yup.string().max(500, "Description too long"),
+});
+
+const EditForm = ({ fileData, closeDialog, onFileUpdated }: any) => {
+  const { loading, onEditFile } = useEditFile();
+  const { onGetFile } = useGetFile();
+  const setFileMeta = useFileMetaStore((state) => state.setFileMeta);
+
+  const formik = useFormik({
+    enableReinitialize: true,
+    initialValues: {
+      title: fileData?.title || "",
+      description: fileData?.description || "",
+    },
+    validationSchema,
+    onSubmit: async (values) => {
+      if (!fileData?.fileId) return;
+      await onEditFile(
+        { fileId: fileData.fileId, title: values.title, description: values.description },
+        async () => {
+          // Fetch latest file data and update Zustand store
+          await onGetFile({
+            fileId: fileData.fileId,
+            successCallback: (freshData: any) => {
+              setFileMeta({
+                fileId: freshData?.fileId,
+                title: freshData?.title,
+                description: freshData?.description,
+                status: freshData?.status,
+                size: freshData?.size,
+                createdAt: freshData?.createdAt,
+                updatedAt: freshData?.updatedAt,
+                fileUrl: freshData?.fileUrl,
+                annotations: freshData?.annotations,
+              });
+            },
+          });
+          closeDialog();
+          if (onFileUpdated) onFileUpdated();
+        }
+      );
+    },
+  });
+
   return (
-    <form className="space-y-6 mt-2 pb-4 " onSubmit={handleSave}>
+    <form className="space-y-6 mt-2 pb-4 " onSubmit={formik.handleSubmit}>
       <div className="space-y-2">
         <Label htmlFor="edit-title">Title</Label>
         <Input
           id="edit-title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="rounded-md border-zinc-200 outline-none text-base transition-all duration-150"
+          name="title"
+          value={formik.values.title}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
+          className={`rounded-md border-zinc-200 outline-none text-base transition-all duration-150 ${formik.touched.title && formik.errors.title ? "border-red-500" : ""}`}
           placeholder="Enter file title"
+          aria-invalid={!!(formik.touched.title && formik.errors.title)}
         />
+        {formik.touched.title && formik.errors.title && (
+          <div className="text-red-500 text-xs">{formik.errors.title}</div>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="edit-description">Description</Label>
         <textarea
           id="edit-description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="rounded-md  text-base min-h-[80px] outline-none border-[1px] border-zinc-400 resize-y w-full px-3 py-2 bg-background shadow-xs transition-all duration-150 placeholder:text-muted-foreground"
+          name="description"
+          value={formik.values.description}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
+          className={`rounded-md text-base min-h-[80px] outline-none border-[1px] border-zinc-400 resize-y w-full px-3 py-2 bg-background shadow-xs transition-all duration-150 placeholder:text-muted-foreground ${formik.touched.description && formik.errors.description ? "border-red-500" : ""}`}
           placeholder="Enter file description"
+          aria-invalid={!!(formik.touched.description && formik.errors.description)}
         />
+        {formik.touched.description && formik.errors.description && (
+          <div className="text-red-500 text-xs">{formik.errors.description}</div>
+        )}
       </div>
       <DialogFooter className="pt-2">
         <Button
           type="submit"
           className="w-full bg-primary hover:bg-primary/90 text-white font-semibold rounded-md shadow transition-all duration-150 focus:ring-2 focus:ring-primary/60 focus:outline-none"
+          disabled={loading || !formik.isValid || formik.isSubmitting}
         >
-          Save Changes
+          {loading ? "Saving..." : "Save Changes"}
         </Button>
       </DialogFooter>
     </form>

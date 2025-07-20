@@ -1,9 +1,9 @@
-"use client"
-import AppLayout from "@/components/molecues/global/Applayout";
+"use client";
 import React, { useEffect, useState } from "react";
 import { DataTable } from "@/components/data-table";
 import TableFilters from "@/components/molecues/global/TableFilters";
 import { useDataTableStore } from "@/hooks/stores/useDataTableStore";
+import AppLayout from "@/components/molecues/global/GlobalLayout";
 
 const page = () => {
   // Ensure skeleton shows immediately on navigation/reload
@@ -19,14 +19,12 @@ const page = () => {
   }, [setLoading]);
 
   return (
-    <div>
-      <AppLayout>
-        <div className="flex flex-col gap-4 md:gap-6 py-4 md:py-6 px-4 lg:px-6">
-          <TableFilters />
-          <DataTable forceInitialLoading={isInitialLoad} />
-        </div>
-      </AppLayout>
-    </div>
+    <AppLayout>
+      <div className="flex flex-col gap-4 md:gap-6 py-4 md:py-6 px-4 lg:px-6">
+        <TableFilters />
+        <DataTable forceInitialLoading={isInitialLoad} />
+      </div>
+    </AppLayout>
   );
 };
 

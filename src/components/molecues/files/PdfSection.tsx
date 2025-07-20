@@ -102,8 +102,10 @@ const PdfSection = (props: Props) => {
                   onTouchEnd={props.handleTouchEnd}
                   style={{
                     cursor:
-                      props.activeTool === "signature" || props.activeTool
-                        ? "crosshair"
+                      props.activeTool === "signature" || props.activeTool === "comment" || props.activeTool
+                        ? props.activeTool === "comment" 
+                          ? "pointer" 
+                          : "crosshair"
                         : "default",
                   }}
                 >
