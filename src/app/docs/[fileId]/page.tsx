@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import AppLayout from "@/components/molecues/global/Applayout";
 import MainSingleFile from "@/components/molecues/files/MainSingleFile";
 import SingleFileSidebar from "@/components/molecues/files/SingleFileSidebar";
 import { useGetFile } from "@/hooks/apis/file";
@@ -18,7 +17,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-
+import EditPdfDialog from "@/components/molecues/files/EditPdfDialog";
+import { useFileMetaStore } from "@/hooks/stores/otherStore";
+import AppLayout from "@/components/molecues/global/GlobalLayout";
 // Type for collaborator data
 interface Collaborator {
   userId: {
@@ -33,9 +34,16 @@ interface Collaborator {
 }
 
 // Loading Skeleton with real collaborator avatars
-const DocumentLoadingSkeleton = ({ collaborators = [] }: { collaborators: Collaborator[] }) => {
+const DocumentLoadingSkeleton = ({
+  collaborators = [],
+}: {
+  collaborators: Collaborator[];
+}) => {
   return (
-    <div className="flex w-full overflow-auto" style={{ height: `calc(100vh - calc(var(--spacing) * 20))` }}>
+    <div
+      className="flex w-full overflow-auto"
+      style={{ height: `calc(100vh - calc(var(--spacing) * 20))` }}
+    >
       {/* Main PDF Area Skeleton */}
       <div className="border-r-[1px] min-h-full flex-1 flex-col">
         {/* Toolbar Skeleton */}
@@ -74,7 +82,13 @@ const DocumentLoadingSkeleton = ({ collaborators = [] }: { collaborators: Collab
                       {[1, 2, 3, 4, 5, 6, 7, 8].map((line) => (
                         <Skeleton
                           key={line}
-                          className={`h-4 ${line % 3 === 0 ? "w-3/4" : line % 2 === 0 ? "w-full" : "w-5/6"}`}
+                          className={`h-4 ${
+                            line % 3 === 0
+                              ? "w-3/4"
+                              : line % 2 === 0
+                              ? "w-full"
+                              : "w-5/6"
+                          }`}
                         />
                       ))}
                     </div>
@@ -127,19 +141,38 @@ const DocumentLoadingSkeleton = ({ collaborators = [] }: { collaborators: Collab
                   <div className="flex -space-x-2">
                     {collaborators.length > 0
                       ? collaborators.slice(0, 4).map((collab, i) => {
-                          const name = collab.userId?.firstName || collab.userId?._id || "?";
-                          const bg = `#${((name.charCodeAt(0) * 0xabcdef) % 0xffffff).toString(16)}`;
+                          const name =
+                            collab.userId?.firstName ||
+                            collab.userId?._id ||
+                            "?";
+                          const bg = `#${(
+                            (name.charCodeAt(0) * 0xabcdef) %
+                            0xffffff
+                          ).toString(16)}`;
                           return (
-                            <Avatar key={collab.userId?._id || i} className="w-6 h-6 border-2 border-white">
-                              <AvatarImage src={collab.userId?.avatarUrl || ""} alt={collab.userId?.firstName} />
-                              <AvatarFallback style={{ background: bg, color: "#fff" }}>
-                                {collab.userId?.firstName ? collab.userId.firstName[0] : "?"}
+                            <Avatar
+                              key={collab.userId?._id || i}
+                              className="w-6 h-6 border-2 border-white"
+                            >
+                              <AvatarImage
+                                src={collab.userId?.avatarUrl || ""}
+                                alt={collab.userId?.firstName}
+                              />
+                              <AvatarFallback
+                                style={{ background: bg, color: "#fff" }}
+                              >
+                                {collab.userId?.firstName
+                                  ? collab.userId.firstName[0]
+                                  : "?"}
                               </AvatarFallback>
                             </Avatar>
                           );
                         })
                       : [1, 2, 3, 4].map((i) => (
-                          <Skeleton key={i} className="w-6 h-6 rounded-full border-2 border-white" />
+                          <Skeleton
+                            key={i}
+                            className="w-6 h-6 rounded-full border-2 border-white"
+                          />
                         ))}
                   </div>
                 </div>
@@ -183,23 +216,60 @@ const DocumentLoadingSkeleton = ({ collaborators = [] }: { collaborators: Collab
 
 const page = () => {
   const { fileId } = useParams<{ fileId: string }>();
-  const { onGetFile, loading, data } = useGetFile();
-  const { loading: loadingCollaborators, onGetCollaborators, data: collaboratorsData } = useGetCollaborators();
+  const { onGetFile, loading } = useGetFile();
+  const {
+    loading: loadingCollaborators,
+    onGetCollaborators,
+    data: collaboratorsData,
+  } = useGetCollaborators();
   const [showRequestAccess, setShowRequestAccess] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const setFileMeta = useFileMetaStore((state) => state.setFileMeta);
+  const clearFileMeta = useFileMetaStore((state) => state.clearFileMeta);
+
+  // Fetch and update Zustand store
+  const refetchFile = () => {
+    if (!fileId) return;
+    setIsInitialLoad(true);
+    onGetFile({
+      fileId,
+      successCallback: (fileData: any) => {
+        setIsInitialLoad(false);
+        setFileMeta({
+          fileId: fileData?.fileId,
+          title: fileData?.title,
+          description: fileData?.description,
+          status: fileData?.status,
+          size: fileData?.size,
+          createdAt: fileData?.createdAt,
+          updatedAt: fileData?.updatedAt,
+          fileUrl: fileData?.fileUrl,
+          annotations: fileData?.annotations,
+        });
+      },
+      errorCallback: () => setIsInitialLoad(false),
+    });
+  };
 
   useEffect(() => {
     if (!fileId) return;
-    
-    // Set initial loading state to true immediately
     setIsInitialLoad(true);
-    
     onGetFile({
       fileId,
-      successCallback: () => {
-        console.log(`File ${fileId} loaded successfully`);
+      successCallback: (fileData: any) => {
         setIsInitialLoad(false);
+        setFileMeta({
+          fileId: fileData?.fileId,
+          title: fileData?.title,
+          description: fileData?.description,
+          status: fileData?.status,
+          size: fileData?.size,
+          createdAt: fileData?.createdAt,
+          updatedAt: fileData?.updatedAt,
+          fileUrl: fileData?.fileUrl,
+          annotations: fileData?.annotations,
+        });
       },
       errorCallback: (error: any) => {
         if (error?.response?.status === 401) {
@@ -210,66 +280,63 @@ const page = () => {
         setIsInitialLoad(false);
       },
     });
-    onGetCollaborators({ 
+    onGetCollaborators({
       fileId,
-      successCallback: () => {
-        // Don't set isInitialLoad to false here, let the file loading control it
-      },
-      errorCallback: () => {
-        // Don't set isInitialLoad to false here, let the file loading control it
-      }
+      successCallback: () => {},
+      errorCallback: () => {},
     });
+    return () => clearFileMeta();
   }, [fileId]);
 
   // Extract collaborators array with proper typing
-  const collaborators: Collaborator[] = Array.isArray(collaboratorsData?.collaborators)
+  const collaborators: Collaborator[] = Array.isArray(
+    collaboratorsData?.collaborators
+  )
     ? collaboratorsData.collaborators
     : [];
 
   return (
-    <div>
-      <AppLayout>
-        <div
-          className="flex w-full overflow-auto"
-          style={{
-            height: `calc(100vh - calc(var(--spacing) * 20))`,
-          }}
-        >
-          {isInitialLoad || loading || loadingCollaborators ? (
-            <DocumentLoadingSkeleton collaborators={collaborators} />
-          ) : notFound ? (
-            <div className="flex flex-col items-center justify-center w-full h-full p-8 text-center">
-              <img
-                src="/icons/404.jpg"
-                alt="File Not Found"
-                className="w-64 h-64 mb-6 opacity-80"
-              />
-              <h2 className="text-3xl font-bold mb-2">File Not Found</h2>
-              <p className="text-lg text-gray-500 mb-6">
-                Sorry, the file you are looking for does not exist or has been
-                removed.
-              </p>
-              <Button
-                variant="default"
-                onClick={() => (window.location.href = "/dashboard")}
-              >
-                Go to Dashboard
-              </Button>
-            </div>
-          ) : showRequestAccess ? (
-            <AccessRequestComponent
-              setShowRequestAccess={setShowRequestAccess}
-              fileId={fileId}
+    <AppLayout>
+      <div
+        className="flex w-full overflow-auto"
+        style={{
+          height: `calc(100vh - calc(var(--spacing) * 20))`,
+        }}
+      >
+        {isInitialLoad || loading || loadingCollaborators ? (
+          <DocumentLoadingSkeleton collaborators={[]} />
+        ) : notFound ? (
+          <div className="flex flex-col items-center justify-center w-full h-full p-8 text-center">
+            <img
+              src="/icons/404.jpg"
+              alt="File Not Found"
+              className="w-64 h-64 mb-6 opacity-80"
             />
-          ) : (
-            <>
-              <MainSingleFile data={data} />
-              <SingleFileSidebar data={data} />
-            </>
-          )}
-        </div>
-      </AppLayout>
-    </div>
+            <h2 className="text-3xl font-bold mb-2">File Not Found</h2>
+            <p className="text-lg text-gray-500 mb-6">
+              Sorry, the file you are looking for does not exist or has been
+              removed.
+            </p>
+            <Button
+              variant="default"
+              onClick={() => (window.location.href = "/dashboard")}
+            >
+              Go to Dashboard
+            </Button>
+          </div>
+        ) : showRequestAccess ? (
+          <AccessRequestComponent
+            setShowRequestAccess={setShowRequestAccess}
+            fileId={fileId}
+          />
+        ) : (
+          <>
+            <MainSingleFile />
+            <SingleFileSidebar onFileUpdated={refetchFile} />
+          </>
+        )}
+      </div>
+    </AppLayout>
   );
 };
 

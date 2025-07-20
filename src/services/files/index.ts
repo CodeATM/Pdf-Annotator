@@ -12,6 +12,10 @@ class Service {
   getFiles() {
     return instance.get(env.api.file + "/files");
   }
+
+  editFile({ fileId, payload }: { fileId: string; payload: { title: string; description: string } }) {
+    return instance.patch(env.api.file + "/edit-file/" + fileId, payload);
+  }
 }
 
 const FileService = new Service();

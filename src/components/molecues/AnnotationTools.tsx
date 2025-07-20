@@ -15,6 +15,7 @@ import {
 import { ColorPicker } from "./ColorPicker";
 import { Button } from "../ui/button";
 import { useRouter } from "next/navigation";
+import { MessageCircle } from "lucide-react";
 
 export const AnnotationTools = ({
   activeTool,
@@ -118,6 +119,30 @@ export const AnnotationTools = ({
         )}
       </div>
 
+      {/* Comment Button */}
+      <div className="relative">
+        <button
+          className={`p-1.5 sm:p-2 rounded-md transition-colors ${
+            activeTool === "comment"
+              ? "bg-orange-100"
+              : "hover:bg-zinc-100 text-zinc-700"
+          }`}
+          onClick={() => handleToolClick("comment")}
+          title="Comment"
+        >
+          <MessageCircle
+            className="w-4 h-4 sm:w-5 sm:h-5"
+            style={{
+              color:
+                activeTool === "comment"
+                  ? "#f59e42"
+                  : "#71717a",
+            }}
+          />
+        </button>
+      </div>
+
+      {/* Signature Button */}
       <button
         className={`p-1.5 sm:p-2 rounded-md transition-colors ${
           activeTool === "signature"

@@ -83,6 +83,7 @@ import { useShareDialogStore } from "@/hooks/stores/otherStore";
 import ShareDialog from "./molecues/global/ShareDialog";
 import { useGetAllFiles } from "@/hooks/apis/file";
 import { useDataTableStore } from "@/hooks/stores/useDataTableStore";
+import favouriteService from "@/services/favourite";
 
 // Utility to generate a color from a string (e.g., user id or name)
 function stringToColor(str: string) {
@@ -120,6 +121,8 @@ export type PdfRow = {
   updatedAt: string;
   collaborators: Collaborator[];
   favorite?: boolean;
+  isFavorite?: boolean;
+  fileId?: string; // <-- add this line for type safety
 };
 
 // New columns for PDF table
@@ -127,11 +130,44 @@ const columns: ColumnDef<PdfRow>[] = [
   {
     id: "favorite",
     header: () => null,
-    cell: ({ row }) => (
-      <Button variant="ghost" size="icon" aria-label="Add to favorite">
-        <IconStar className="size-5 text-muted-foreground" />
-      </Button>
-    ),
+    cell: ({ row }) => {
+      const { data, setData } = useDataTableStore();
+      const isFav = !!row.original.isFavorite;
+      const handleClick = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const fileId = row.original.fileId || row.original.id;
+        try {
+          if (isFav) {
+            await favouriteService.removeFromFavourite(fileId);
+            setData(
+              data.map((item) =>
+                (item.fileId || item.id) === fileId ? { ...item, isFavorite: false } : item
+              )
+            );
+            toast.success("Removed from favourites");
+          } else {
+            await favouriteService.addToFavourite({ fileId });
+            setData(
+              data.map((item) =>
+                (item.fileId || item.id) === fileId ? { ...item, isFavorite: true } : item
+              )
+            );
+            toast.success("Added to favourites");
+          }
+        } catch {
+          toast.error("Failed to update favourite");
+        }
+      };
+      return (
+        <Button variant="ghost" size="icon" aria-label="Toggle favorite" onClick={handleClick}>
+          <IconStar
+            className={`size-5 ${isFav ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground"}`}
+            fill={isFav ? "currentColor" : "none"}
+            stroke={isFav ? "#facc15" : "currentColor"}
+          />
+        </Button>
+      );
+    },
     enableSorting: false,
     enableHiding: false,
   },
@@ -157,28 +193,28 @@ const columns: ColumnDef<PdfRow>[] = [
     cell: ({ row }) => {
       const status = row.original.status?.toLowerCase();
       let badgeClass = "px-1.5 capitalize";
-      let badgeColor = "outline";
+      let badgeVariant: "outline" | "default" | "destructive" | "secondary" = "outline";
       if (status === "active") {
-        badgeColor = "success";
+        badgeVariant = "default";
         badgeClass += " bg-green-100 text-green-800 border-green-200";
       } else if (status === "inactive") {
-        badgeColor = "secondary";
+        badgeVariant = "secondary";
         badgeClass += " bg-gray-100 text-gray-800 border-gray-200";
       } else if (status === "archived") {
-        badgeColor = "destructive";
+        badgeVariant = "destructive";
         badgeClass += " bg-red-100 text-red-800 border-red-200";
       } else if (status === "processing") {
-        badgeColor = "outline";
+        badgeVariant = "outline";
         badgeClass += " bg-yellow-100 text-yellow-800 border-yellow-200";
       } else if (status === "pending") {
-        badgeColor = "outline";
+        badgeVariant = "outline";
         badgeClass += " bg-blue-100 text-blue-800 border-blue-200";
       } else {
-        badgeColor = "outline";
+        badgeVariant = "outline";
         badgeClass += " bg-muted text-muted-foreground border-muted";
       }
       return (
-        <Badge variant={badgeColor} className={badgeClass}>
+        <Badge variant={badgeVariant} className={badgeClass}>
           {status}
         </Badge>
       );
@@ -297,8 +333,9 @@ export function DataTable({ forceInitialLoading = false }: { forceInitialLoading
         status: item.status,
         updatedAt: item.updatedAt,
         collaborators: item.collaborators,
-        favorite: false,
+        favorite: false, // keep for backward compatibility
         fileId: item.fileId,
+        isFavorite: item.isFavorite, // <-- add this line to map isFavorite
       }));
       setData(mapped);
     }
@@ -379,12 +416,12 @@ export function DataTable({ forceInitialLoading = false }: { forceInitialLoading
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-auto">
-                <DropdownMenuItem onClick={() => router.push(`/docs/${row.original.fileId}`)}>
+                <DropdownMenuItem onClick={() => router.push(`/docs/${row.original.fileId || row.original.id}`)}>
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() =>
-                    openShareDialog(`${window.location.origin}/docs/${row.original.fileId}`)
+                    openShareDialog(`${window.location.origin}/docs/${row.original.fileId || row.original.id}`)
                   }
                 >
                   Share

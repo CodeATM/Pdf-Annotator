@@ -51,7 +51,7 @@ export const useGetFile = () => {
     errorCallback,
   }: {
     fileId: string;
-    successCallback?: () => void;
+    successCallback?: (data: any) => void;
     errorCallback?: (error: any) => void;
   }) => {
     setLoading(true);
@@ -61,7 +61,7 @@ export const useGetFile = () => {
       setData(response.data.data);
       showSuccessToast({ message: "File fetched successfully" });
 
-      if (successCallback) successCallback();
+      if (successCallback) successCallback(response.data.data);
     } catch (error: any) {
       const apiResponse = error.response?.data || {
         message: "An unknown error occurred",
@@ -118,4 +118,37 @@ export const useGetAllFiles = () => {
   }, []);
 
   return { loading, onGetFiles, data };
+};
+
+// Add this hook for editing a file
+type EditFilePayload = { fileId: string; title: string; description: string };
+export const useEditFile = () => {
+  const [loading, setLoading] = useState(false);
+
+  const onEditFile = async (
+    { fileId, title, description }: EditFilePayload,
+    successCallback?: () => void,
+    errorCallback?: (error: any) => void
+  ) => {
+    setLoading(true);
+    try {
+      await FileService.editFile({ fileId, payload: { title, description } });
+      showSuccessToast({ message: "File updated successfully" });
+      if (successCallback) successCallback();
+    } catch (error: any) {
+      const apiResponse = error.response?.data || {
+        message: "An unknown error occurred",
+        description: "",
+      };
+      showErrorToast({
+        message: apiResponse.message,
+        description: apiResponse.description,
+      });
+      if (errorCallback) errorCallback(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { loading, onEditFile };
 };

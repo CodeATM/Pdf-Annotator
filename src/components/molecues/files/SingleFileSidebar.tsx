@@ -17,7 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useEditPdfDialogStore } from "@/hooks/stores/otherStore";
+import { useEditPdfDialogStore, useFileMetaStore } from "@/hooks/stores/otherStore";
 import EditPdfDialog from "./EditPdfDialog";
 import CollaboratorsDialog from "@/components/molecues/global/CollaboratorsDialog";
 
@@ -26,24 +26,25 @@ const tabs = [
   { label: "Comments", value: "comments" },
 ];
 
-const SingleFileSidebar = ({ data, collaborators }: { data: any, collaborators?: any[] }) => {
+const SingleFileSidebar = ({ onFileUpdated }: { onFileUpdated?: () => void }) => {
+  const meta = useFileMetaStore();
+  // Use meta for sidebar display
+  const displayData = meta;
   const toMegabytes = (bytes: any) => {
     return (bytes / (1024 * 1024)).toFixed(2); // converts to MB and rounds to 2 decimals
   };
   const [activeTab, setActiveTab] = useState("activity");
   const { isOpen, openDialog, closeDialog, fileData } = useEditPdfDialogStore();
   const [editTab, setEditTab] = useState("details");
-  const [title, setTitle] = useState(data?.title || "");
-  const [description, setDescription] = useState(data?.description || "");
+  const [title, setTitle] = useState(meta?.title || "");
+  const [description, setDescription] = useState(meta?.description || "");
   const [showCollaboratorsDialog, setShowCollaboratorsDialog] = useState(false);
   const router = useRouter();
 
   // Use collaborators prop if provided, else fallback to data.collaborators or []
-  const realCollaborators = Array.isArray(collaborators)
-    ? collaborators
-    : Array.isArray(data?.collaborators)
-      ? data.collaborators
-      : [];
+  const realCollaborators = Array.isArray(meta?.collaborators)
+    ? meta.collaborators
+    : [];
 
   return (
     <>
@@ -58,12 +59,12 @@ const SingleFileSidebar = ({ data, collaborators }: { data: any, collaborators?:
             {/* Project Overview Section */}
             <div className="space-y-4 mb-6">
               <div className="flex justify-between items-start">
-                <h2 className="text-lg font-semibold">{data?.title}</h2>
+                <h2 className="text-lg font-semibold">{displayData?.title}</h2>
                 <div className="flex gap-2 items-center">
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => openDialog(data)}
+                    onClick={() => openDialog(meta)}
                     className="p-2"
                     aria-label="Edit file details"
                   >
@@ -72,7 +73,7 @@ const SingleFileSidebar = ({ data, collaborators }: { data: any, collaborators?:
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => router.push(`/docs/${data?.fileId}/access`)}
+                    onClick={() => router.push(`/docs/${meta?.fileId}/access`)}
                     className="p-2"
                     aria-label="File access settings"
                   >
@@ -84,8 +85,8 @@ const SingleFileSidebar = ({ data, collaborators }: { data: any, collaborators?:
                 <Calendar size={14} />
                 <span>
                   Created:{" "}
-                  {data?.createdAt
-                    ? format(new Date(data.createdAt), "MMMM d, yyyy – h:mm a")
+                  {displayData?.createdAt
+                    ? format(new Date(displayData.createdAt), "MMMM d, yyyy – h:mm a")
                     : "N/A"}
                 </span>
               </div>
@@ -96,21 +97,21 @@ const SingleFileSidebar = ({ data, collaborators }: { data: any, collaborators?:
                     className="bg-yellow-100 text-yellow-800 capitalize "
                     variant="secondary"
                   >
-                    {data?.status}
+                    {displayData?.status}
                   </Badge>
                 </InfoRow>
 
                 <InfoRow label="Size">
                   <span className="text-muted-foreground text-xs">
-                    {toMegabytes(data?.size)} MB
+                    {toMegabytes(displayData?.size)} MB
                   </span>
                 </InfoRow>
 
                 <InfoRow label="Last updated">
                   <span>
-                    {data?.createdAt
+                    {displayData?.updatedAt
                       ? format(
-                          new Date(data.updatedAt),
+                          new Date(displayData.updatedAt),
                           "MMMM d, yyyy – h:mm a"
                         )
                       : "N/A"}
@@ -159,8 +160,7 @@ const SingleFileSidebar = ({ data, collaborators }: { data: any, collaborators?:
               <div>
                 <p className="text-xs font-medium mb-1"> Description</p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc
-                  vulputate libero et velit interdum, ac aliquet odio mattis.
+                  {displayData.description}
                 </p>
               </div>
             </div>
@@ -212,7 +212,7 @@ const SingleFileSidebar = ({ data, collaborators }: { data: any, collaborators?:
           </div>
         </Tabs>
       </div>
-      <EditPdfDialog />
+      <EditPdfDialog onFileUpdated={onFileUpdated} />
       <CollaboratorsDialog
         open={showCollaboratorsDialog}
         onOpenChange={setShowCollaboratorsDialog}
