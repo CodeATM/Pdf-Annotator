@@ -10,8 +10,11 @@ import {
   Cross2Icon,
   FileIcon,
   ChevronDownIcon,
+  ArrowLeftIcon,
 } from "@radix-ui/react-icons";
 import { ColorPicker } from "./ColorPicker";
+import { Button } from "../ui/button";
+import { useRouter } from "next/navigation";
 
 export const AnnotationTools = ({
   activeTool,
@@ -38,9 +41,15 @@ export const AnnotationTools = ({
       setIsColorPickerOpen(true);
     }
   };
-
+  const router = useRouter();
   return (
     <div className="flex items-center gap-1">
+      <Button variant="ghost">
+        <ArrowLeftIcon
+          className="size-5 cursor-pointer "
+          onClick={() => router.back()}
+        />
+      </Button>
       {/* Highlight Button */}
       <div className="relative">
         <button
