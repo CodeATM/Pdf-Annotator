@@ -59,7 +59,7 @@ export const useGetFile = () => {
       const response = await FileService.getSinglePdf({ fileId });
 
       setData(response.data.data);
-      showSuccessToast({ message: "File fetched successfully" });
+      // showSuccessToast({ message: "File fetched successfully" });
 
       if (successCallback) successCallback(response.data.data);
     } catch (error: any) {

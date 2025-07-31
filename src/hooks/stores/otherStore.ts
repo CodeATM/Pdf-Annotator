@@ -40,6 +40,7 @@ interface FileMetaState {
   updatedAt?: string;
   fileUrl?: string;
   annotations?: any[];
+  comments?: any[];
   collaborators?: any[];
   setFileMeta: (meta: Partial<Omit<FileMetaState, 'setFileMeta' | 'clearFileMeta'>>) => void;
   clearFileMeta: () => void;
@@ -55,6 +56,7 @@ export const useFileMetaStore = create<FileMetaState>((set) => ({
   updatedAt: undefined,
   fileUrl: undefined,
   annotations: undefined,
+  comments: undefined,
   collaborators: undefined,
   setFileMeta: (meta) => set((state) => ({ ...state, ...meta })),
   clearFileMeta: () => set({
@@ -67,6 +69,7 @@ export const useFileMetaStore = create<FileMetaState>((set) => ({
     updatedAt: undefined,
     fileUrl: undefined,
     annotations: undefined,
+    comments: undefined,
     collaborators: undefined,
   }),
 }));

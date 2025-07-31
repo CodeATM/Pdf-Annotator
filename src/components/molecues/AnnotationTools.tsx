@@ -124,7 +124,7 @@ export const AnnotationTools = ({
         <button
           className={`p-1.5 sm:p-2 rounded-md transition-colors ${
             activeTool === "comment"
-              ? "bg-orange-100"
+              ? "bg-gray-100"
               : "hover:bg-zinc-100 text-zinc-700"
           }`}
           onClick={() => handleToolClick("comment")}
@@ -133,10 +133,7 @@ export const AnnotationTools = ({
           <MessageCircle
             className="w-4 h-4 sm:w-5 sm:h-5"
             style={{
-              color:
-                activeTool === "comment"
-                  ? "#f59e42"
-                  : "#71717a",
+              color: "#71717a", // Always keep the same gray color
             }}
           />
         </button>

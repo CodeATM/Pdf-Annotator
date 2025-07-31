@@ -39,6 +39,10 @@ class Service {
       withCredentials: true,
     });
   }
+
+  googleLogin({ payload }: { payload: any }) {
+    return axios.post(env.api.auth + "/google-login", payload);
+  }
 }
 
 const AuthService = new Service();

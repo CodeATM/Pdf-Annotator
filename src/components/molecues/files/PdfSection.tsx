@@ -11,6 +11,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { formatDistanceToNow } from "date-fns";
+import { MessageCircleQuestion } from "lucide-react";
+import { CommentDropdown } from "./CommentDropdown";
 
 // Helper to generate a color from a string (user's name)
 function stringToColor(str: string) {
@@ -52,6 +54,7 @@ type Props = {
   currentAnnotation: any;
   selectedColor: string;
   annotations: any[];
+  comments: any[];
   finishAnnotation: () => void;
   handlePageLoadSuccess: (pageNumber: number, page: any) => void;
   handleTouchEnd: (e: React.TouchEvent) => void;
@@ -64,6 +67,10 @@ type Props = {
   setPageRef: (index: number, element: HTMLDivElement | null) => void;
   startAnnotation: (e: React.MouseEvent, pageNumber: number) => void;
   updateAnnotation: (e: React.MouseEvent) => void;
+  onCommentClick?: (comment: any) => void;
+  onNewCommentClick?: (e: React.MouseEvent) => void;
+  pageViewports?: { [key: number]: { width: number; height: number; rotation: number } };
+  pageRefs?: React.MutableRefObject<{ [key: number]: HTMLDivElement | null }>;
 };
 
 const PdfSection = (props: Props) => {
@@ -93,7 +100,26 @@ const PdfSection = (props: Props) => {
                   key={`page-${index + 1}`}
                   className="relative mb-4 border border-gray-300 rounded-md shadow-sm bg-white p-2"
                   ref={(el) => props.setPageRef(index + 1, el)}
-                  onMouseDown={(e) => props.startAnnotation(e, index + 1)}
+                  onMouseDown={(e) => {
+                    if (props.activeTool === "comment" && props.onNewCommentClick) {
+                      // Only trigger new comment if clicking on the page itself, not on existing annotations
+                      const target = e.target as HTMLElement;
+                      const isClickingOnAnnotation = target.closest('[data-annotation]') || 
+                                                   target.closest('[style*="position: absolute"]');
+                      
+                      if (!isClickingOnAnnotation) {
+                        // Add page number to the event for proper coordinate calculation
+                        const pageEvent = {
+                          ...e,
+                          pageNumber: index + 1,
+                          pageElement: e.currentTarget
+                        };
+                        props.onNewCommentClick(pageEvent as any);
+                      }
+                    } else {
+                      props.startAnnotation(e, index + 1);
+                    }
+                  }}
                   onMouseMove={props.updateAnnotation}
                   onMouseUp={props.finishAnnotation}
                   onMouseLeave={props.finishAnnotation}
@@ -104,7 +130,7 @@ const PdfSection = (props: Props) => {
                     cursor:
                       props.activeTool === "signature" || props.activeTool === "comment" || props.activeTool
                         ? props.activeTool === "comment" 
-                          ? "pointer" 
+                          ? "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%23666\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/></svg>') 12 12, pointer"
                           : "crosshair"
                         : "default",
                   }}
@@ -242,29 +268,73 @@ const PdfSection = (props: Props) => {
                       }
 
                       // Handle different annotation types
-                      if (
-                        annotation.type === "comment" ||
-                        annotation.type === "note"
-                      ) {
+                      // Check if this is a comment (comments are identified by having content and specific color)
+                      const isComment = annotation.content && annotation.createdBy && 
+                        annotation.color === "rgba(255, 235, 60, 0.8)";
+
+                      if (isComment) {
+                        const creatorName = annotation.createdBy
+                          ? `${annotation.createdBy.firstName || "Unknown"} ${annotation.createdBy.lastName || "User"}`
+                          : "Unknown User";
+
+                        // Helper to truncate text to 5 words with ellipsis
+                        const truncateWords = (text: string, wordLimit: number) => {
+                          if (!text) return '';
+                          const words = text.split(/\s+/);
+                          if (words.length <= wordLimit) return text;
+                          return words.slice(0, wordLimit).join(' ') + '...';
+                        };
+
+                        // Calculate comment icon position using the same logic as renderAnnotation
+                        const viewport = props.pageViewports?.[index + 1];
+                        const pageElement = props.pageRefs?.current[index + 1];
+                        let commentStyle = {};
+                        
+                        if (viewport && pageElement) {
+                          const pageRect = pageElement.getBoundingClientRect();
+                          const scaleX = pageRect.width / viewport.width;
+                          const scaleY = pageRect.height / viewport.height;
+                          
+                          const left = annotation.x * scaleX;
+                          const top = annotation.y * scaleY;
+                          
+                          commentStyle = {
+                            position: "absolute",
+                            left: `${left}px`,
+                            top: `${top}px`,
+                            zIndex: 10,
+                            cursor: "pointer",
+                          };
+                        }
+
                         return (
                           <div
                             key={annotation.id}
-                            className="absolute flex flex-col items-center justify-center"
-                            style={{ ...style, pointerEvents: "none" }}
+                            style={commentStyle}
+                            data-annotation="comment"
+                            onClick={(e) => {
+                              e.stopPropagation(); 
+                              if (props.onCommentClick) {
+                                props.onCommentClick(annotation);
+                              }
+                            }}
+                            className="group"
                           >
-                            <div
-                              className="bg-yellow-200 border-2 border-yellow-400 rounded-md px-2 py-1 text-xs font-medium text-gray-800 shadow-sm"
-                              style={{
-                                backgroundColor:
-                                  annotation.color || "rgba(255, 235, 60, 0.8)",
-                                borderColor:
-                                  annotation.color || "rgba(255, 193, 7, 0.8)",
-                              }}
-                            >
-                              {annotation.content ||
-                                (annotation.type === "comment" ? "💬" : "📝")}
+                            {/* Simple black comment icon */}
+                            <div className="relative">
+                              <MessageCircleQuestion className="w-6 h-6 text-black" />
                             </div>
-                            {AvatarHover}
+                            
+                            {/* Tooltip on hover */}
+                            <div className="absolute left-10 top-0 bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                              <div className="text-xs font-medium text-gray-900 mb-1">
+                                {creatorName}
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {truncateWords(annotation.content || "Comment", 8)}
+                              </div>
+                              <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-white border-l border-t border-gray-200 rotate-45"></div>
+                            </div>
                           </div>
                         );
                       }
@@ -291,6 +361,75 @@ const PdfSection = (props: Props) => {
                             }}
                           />
                           {AvatarHover}
+                        </div>
+                      );
+                    })}
+                  
+                  {/* Render comments separately */}
+                  {props.comments
+                    .filter((comment: any) => comment.pageNumber === index + 1)
+                    .map((comment: any) => {
+                      const viewport = props.pageViewports?.[index + 1];
+                      const pageElement = props.pageRefs?.current[index + 1];
+                      let commentStyle = {};
+                      
+                      if (viewport && pageElement) {
+                        const pageRect = pageElement.getBoundingClientRect();
+                        const scaleX = pageRect.width / viewport.width;
+                        const scaleY = pageRect.height / viewport.height;
+                        
+                        const left = comment.position.x * scaleX;
+                        const top = comment.position.y * scaleY;
+                        
+                        commentStyle = {
+                          position: "absolute",
+                          left: `${left}px`,
+                          top: `${top}px`,
+                          zIndex: 10,
+                          cursor: "pointer",
+                        };
+                      }
+
+                      const creatorName = comment.author
+                        ? `${comment.author.firstName || "Unknown"} ${comment.author.lastName || "User"}`
+                        : "Unknown User";
+
+                      // Helper to truncate text to 5 words with ellipsis
+                      const truncateWords = (text: string, wordLimit: number) => {
+                        if (!text) return '';
+                        const words = text.split(/\s+/);
+                        if (words.length <= wordLimit) return text;
+                        return words.slice(0, wordLimit).join(' ') + '...';
+                      };
+
+                      return (
+                        <div
+                          key={comment._id}
+                          style={commentStyle}
+                          data-comment="true"
+                          onClick={(e) => {
+                            e.stopPropagation(); 
+                            if (props.onCommentClick) {
+                              props.onCommentClick(comment);
+                            }
+                          }}
+                          className="group"
+                        >
+                          {/* Simple black comment icon */}
+                          <div className="relative">
+                            <MessageCircleQuestion className="w-6 h-6 text-black" />
+                          </div>
+                          
+                          {/* Tooltip on hover */}
+                          <div className="absolute left-10 top-0 bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                            <div className="text-xs font-medium text-gray-900 mb-1">
+                              {creatorName}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {truncateWords(comment.content || "Comment", 8)}
+                            </div>
+                            <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-white border-l border-t border-gray-200 rotate-45"></div>
+                          </div>
                         </div>
                       );
                     })}

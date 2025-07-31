@@ -53,7 +53,7 @@ export const LandingNav = () => {
       }`}
     >
       <div
-        className={`max-w-6xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between rounded-xl mt-4 transition-all duration-300 ${
+        className={`max-w-6xl mx-4 md:mx-auto px-4 md:px-6 py-3 flex items-center justify-between rounded-xl mt-4 transition-all duration-300 ${
           isScrolled
             ? "bg-white/50 backdrop-blur-md border border-zinc-200 shadow"
             : "bg-white border border-zinc-200"
