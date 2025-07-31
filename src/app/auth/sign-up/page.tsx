@@ -1,6 +1,6 @@
 import { GalleryVerticalEnd } from "lucide-react";
 
-import { SignupForm } from "@/components/molecues/auth/signup-form";
+import { SignUpForm } from "@/components/molecues/auth/signup-form";
 
 export default function LoginPage() {
   return (
@@ -12,7 +12,7 @@ export default function LoginPage() {
           </div>
           Luna
         </a>
-        <SignupForm />
+        <SignUpForm />
       </div>
     </div>
   );

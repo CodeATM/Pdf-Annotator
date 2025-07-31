@@ -7,6 +7,7 @@ const api = (isProduction: boolean) => ({
   annotation: `${BASE_URL}/api/v1/anon`,
   collaboration: `${BASE_URL}/api/v1/col`,
   favourite: `${BASE_URL}/api/v1/fav`,
+  comment: `${BASE_URL}/api/v1/comments`,
 });
 
 export default api;

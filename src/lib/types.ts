@@ -14,6 +14,7 @@ export interface Annotation {
   imageData?: string;
   textContent?: string;
   content?: string; // For comments and notes
+  commentId?: string; // For comments, the actual comment ID from API
   createdBy?: {
     _id: string;
     firstName: string;

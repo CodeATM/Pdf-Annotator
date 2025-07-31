@@ -2,7 +2,17 @@ import React, { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Smile } from "lucide-react";
-import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
+import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
+import { AnnotationType } from "@/lib/types";
+import { MentionInput } from "./MentionInput";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+// Example collaborators data
+const collaborators = [
+  { id: "1", display: "Alice" },
+  { id: "2", display: "Bob" },
+  { id: "3", display: "Charlie" },
+];
 
 interface CommentDialogProps {
   showCommentDialog: boolean;
@@ -13,11 +23,12 @@ interface CommentDialogProps {
     screenX: number;
     screenY: number;
     pageNumber: number;
+    author?: string;
   } | null;
   commentText: string;
   setCommentText: (text: string) => void;
   handleCommentSubmit: () => void;
-  setActiveTool: (tool: string | null) => void;
+  setActiveTool: (tool: AnnotationType | null) => void;
   setCommentDialogPos: (pos: any) => void;
 }
 
@@ -51,7 +62,7 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
   };
 
   const handleEmojiClick = (emojiData: EmojiClickData) => {
-    setCommentText((prev: string) => prev + emojiData.emoji);
+    setCommentText(commentText + emojiData.emoji);
   };
 
   if (!showCommentDialog || !commentDialogPos) return null;
@@ -61,28 +72,33 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
       <DialogContent
         style={{
           position: "fixed",
-          left: commentDialogPos.screenX + 20,
-          top: commentDialogPos.screenY + 20,
-          width: 300,
+          left: commentDialogPos.screenX,
+          top: commentDialogPos.screenY,
           padding: 16,
           zIndex: 1000,
           transform: "none",
         }}
         showCloseButton={false}
-        className="bg-white/90 backdrop-blur-xl border border-zinc-200 shadow-2xl rounded-xl p-4"
+        className="bg-white/90 backdrop-blur-xl border border-zinc-200 shadow-2xl rounded-xl p-4 w-auto"
       >
         <div className="flex flex-col gap-4">
-          <div className="text-sm font-semibold text-zinc-800">
-            Add a comment
+          <div className="flex items-center gap-2 text-sm font-semibold text-zinc-800">
+            <span>Add a comment</span>
+            <div className="w-6 h-6">
+              <Avatar className="w-6 h-6">
+                <AvatarFallback>{commentDialogPos?.author ? commentDialogPos.author[0].toUpperCase() : "?"}</AvatarFallback>
+              </Avatar>
+            </div>
+            {commentDialogPos?.author && (
+              <span className="text-xs text-zinc-500">{commentDialogPos.author}</span>
+            )}
           </div>
 
-          <Textarea
-            autoFocus
-            placeholder="Type your comment... ✨"
+          <MentionInput
             value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="min-h-[90px] resize-none rounded-md border-zinc-300 focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
+            onChange={setCommentText}
+            placeholder="Type your comment and use @ to mention…"
+            className="min-h-[90px] w-[280px] resize-none rounded-md border-zinc-300 focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
           />
 
           <div className="flex items-center justify-between">
@@ -114,7 +130,7 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
             <div className="absolute z-[1001] top-full mt-2">
               <EmojiPicker
                 onEmojiClick={handleEmojiClick}
-                theme="light"
+                theme={Theme.LIGHT}
               />
             </div>
           )}

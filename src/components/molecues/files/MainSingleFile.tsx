@@ -9,11 +9,30 @@ import PdfSection from "./PdfSection";
 import { PageRefs, SignaturePadRef, Annotation } from "@/lib/types";
 import { showErrorToast } from "@/utils/toasters";
 import { useCreateAnnotation } from "@/hooks/apis/annotations";
+import { useAddComment, useAddReply } from "@/hooks/apis/comments";
 import { SignatureModal } from "../SignatureModal";
-import { CommentDialog } from "./CommentDialog";
+import { CommentDropdown } from "./CommentDropdown";
 import { useAnnotationHandlers } from "./AnnotationHandlers";
 import { usePdfExportHandler } from "./PdfExportHandler";
 import { useAnnotationRenderer } from "./AnnotationRenderer";
+import { AnnotationType } from "@/lib/types";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+
+// Helper to calculate text dimensions
+const getTextDimensions = (text: string, font = "14px Arial") => {
+  if (typeof document !== "undefined") {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.font = font;
+      const metrics = context.measureText(text);
+      return { width: metrics.width, height: parseInt(context.font, 10) };
+    }
+  }
+  // Fallback for server-side rendering or environments without DOM
+  return { width: text.length * 8, height: 16 };
+};
 
 const MainSingleFile = () => {
   const meta = useFileMetaStore();
@@ -59,20 +78,28 @@ const MainSingleFile = () => {
   const router = useRouter();
   const params = useParams<{ fileId: string }>();
   const { loading: saveLoading, onCreateAnnotation } = useCreateAnnotation();
+  const { loading: commentLoading, onAddComment } = useAddComment();
+  const { loading: replyLoading, onAddReply } = useAddReply();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<PageRefs>({});
   const signaturePadRef = useRef<SignaturePadRef | null>(null);
 
-  const [showCommentDialog, setShowCommentDialog] = useState(false);
-  const [commentDialogPos, setCommentDialogPos] = useState<{ 
+  const [showCommentDropdown, setShowCommentDropdown] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<{
     x: number; 
-    y: number; 
-    screenX: number; 
-    screenY: number; 
-    pageNumber: number; 
+    y: number;
+    containerLeft: number;
+    containerRight: number;
+    containerTop: number;
+    containerBottom: number;
+    viewportWidth?: number;
+    viewportHeight?: number;
+    pageRect?: DOMRect;
   } | null>(null);
-  const [commentText, setCommentText] = useState("");
+  const [activeComment, setActiveComment] = useState<Annotation | null>(null);
+  const [isNewComment, setIsNewComment] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
 
   // Custom hooks for modular functionality
   const { startAnnotation, updateAnnotation, finishAnnotation } = useAnnotationHandlers({
@@ -84,9 +111,9 @@ const MainSingleFile = () => {
     setIsDrawing,
     setSignaturePosition,
     setShowSignatureModal,
-    setCommentDialogPos,
-    setShowCommentDialog,
-    setCommentText,
+    setCommentDialogPos: () => {}, // No longer needed
+    setShowCommentDialog: () => {}, // No longer needed
+    setCommentText: () => {}, // No longer needed
   });
 
   const { exportAnnotatedPdf } = usePdfExportHandler({
@@ -101,6 +128,25 @@ const MainSingleFile = () => {
     pageRefs,
   });
 
+  // Custom render function for comments to show message icons
+  const renderCommentIcon = (annotation: Annotation, pageNumber: number) => {
+    const viewport = pageViewports[pageNumber];
+    const pageElement = pageRefs.current[pageNumber];
+    if (!viewport || !pageElement) return {};
+
+    const pageRect = pageElement.getBoundingClientRect();
+    const scaleX = pageRect.width / viewport.width;
+    const scaleY = pageRect.height / viewport.height;
+
+    const left = annotation.x * scaleX;
+    const top = annotation.y * scaleY;
+
+    return {
+      left: `${left}px`,
+      top: `${top}px`,
+    };
+  };
+
   useEffect(() => {
     if (displayData.fileUrl) {
       setPdfFile(displayData.fileUrl);
@@ -114,10 +160,7 @@ const MainSingleFile = () => {
         let width = serverAnn.width || 100;
         let height = serverAnn.height || 20;
         
-        if (serverAnn.type === "comment" || serverAnn.type === "note") {
-          width = serverAnn.width || 150;
-          height = serverAnn.height || 30;
-        } else if (serverAnn.type === "highlight") {
+        if (serverAnn.type === "highlight") {
           width = serverAnn.width || 200;
           height = serverAnn.height || 25;
         } else if (serverAnn.type === "underline") {
@@ -150,6 +193,22 @@ const MainSingleFile = () => {
     }
   }, [displayData?.annotations, clearAll, addSavedAnnotations]);
 
+  // Load comments separately from server response
+  useEffect(() => {
+    console.log("Loading comments from displayData:", displayData?.comments);
+    if (displayData?.comments && Array.isArray(displayData.comments)) {
+      console.log("Setting comments:", displayData.comments);
+      setComments(displayData.comments);
+    }
+  }, [displayData?.comments]);
+
+  // Debug annotations
+  useEffect(() => {
+    console.log("displayData:", displayData);
+    console.log("displayData.comments:", displayData?.comments);
+    console.log("Current annotations:", annotations);
+  }, [annotations, displayData]);
+
   // Calculate scale based on container size
   useEffect(() => {
     if (!containerRef.current) return;
@@ -168,7 +227,6 @@ const MainSingleFile = () => {
 
   // Touch event handlers to support mobile
   const handleTouchStart = (e: React.TouchEvent, pageNumber: number) => {
-    e.preventDefault();
     startAnnotation(
       {
         clientX: e.touches[0].clientX,
@@ -179,7 +237,6 @@ const MainSingleFile = () => {
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
     updateAnnotation({
       clientX: e.touches[0].clientX,
       clientY: e.touches[0].clientY,
@@ -187,7 +244,6 @@ const MainSingleFile = () => {
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    e.preventDefault();
     finishAnnotation(currentAnnotation, scale, addAnnotation, setIsDrawing, setCurrentAnnotation);
   };
 
@@ -305,32 +361,230 @@ const MainSingleFile = () => {
     }
   };
 
-  // Handle comment dialog submit
-  const handleCommentSubmit = () => {
-    if (!commentDialogPos || !commentText.trim()) return;
+  // Handle new comment creation
+  const handleNewComment = async (commentContent: string) => {
+    if (!dropdownPosition || !params.fileId) return;
 
-    const newAnnotation: Annotation = {
-      id: `ann-${Date.now()}`,
-      type: "comment",
-      pageNumber: commentDialogPos.pageNumber,
-      x: commentDialogPos.x,
-      y: commentDialogPos.y,
-      width: 150,
-      height: 30,
-      color: "rgba(255, 235, 60, 0.8)",
-      content: commentText,
-      createdBy: user ? {
-        _id: user._id || user.id,
-        firstName: user.firstName || user.firstname || "Unknown",
-        lastName: user.lastName || user.lastname || "User",
-        email: user.email,
-      } : undefined,
-    };
-    addAnnotation(newAnnotation);
-    setShowCommentDialog(false);
-    setCommentDialogPos(null);
-    setCommentText("");
-    setActiveTool(null);
+    console.log("Creating new comment at position:", dropdownPosition);
+
+    const { width, height } = getTextDimensions(commentContent);
+    const commentBoxWidth = width + 20;
+    const commentBoxHeight = height + 20;
+    
+    // Find which page was clicked by checking all pages
+    let targetPage = 1;
+    let pageElement = null;
+    
+    for (let pageNum = 1; pageNum <= (numPages || 1); pageNum++) {
+      const element = pageRefs.current[pageNum];
+      if (element) {
+        const rect = element.getBoundingClientRect();
+        console.log(`Page ${pageNum} rect:`, rect);
+        if (dropdownPosition.x >= rect.left && dropdownPosition.x <= rect.right &&
+            dropdownPosition.y >= rect.top && dropdownPosition.y <= rect.bottom) {
+          targetPage = pageNum;
+          pageElement = element;
+          console.log(`Found target page: ${targetPage}`);
+          break;
+        }
+      }
+    }
+    
+    if (pageElement) {
+      const pageRect = pageElement.getBoundingClientRect();
+      const viewport = pageViewports[targetPage] || { width: 612, height: 792 };
+      
+      console.log("Page rect:", pageRect);
+      console.log("Viewport:", viewport);
+      
+      // Use exact click coordinates without adjustment
+      const x = ((dropdownPosition.x - pageRect.left) / pageRect.width) * viewport.width;
+      const y = ((dropdownPosition.y - pageRect.top) / pageRect.height) * viewport.height;
+      
+      console.log("Exact click coordinates:", { x, y });
+
+      const newAnnotation: Annotation = {
+        id: `ann-${Date.now()}`,
+        type: "comment",
+        pageNumber: targetPage,
+        x: x,
+        y: y,
+        width: commentBoxWidth,
+        height: commentBoxHeight,
+        color: "rgba(255, 235, 60, 0.8)",
+        content: commentContent,
+        createdBy: user ? {
+          _id: user._id || user.id,
+          firstName: user.firstName || user.firstname || "Unknown",
+          lastName: user.lastName || user.lastname || "User",
+          email: user.email,
+        } : undefined,
+      };
+
+      // Add annotation to local state first
+      addAnnotation(newAnnotation);
+      console.log("Added annotation:", newAnnotation);
+
+      // Save comment to backend
+      try {
+        const response = await onAddComment({
+          fileId: params.fileId,
+          payload: {
+            content: commentContent,
+            position: {
+              x: x,
+              y: y,
+              pageNumber: targetPage,
+            },
+            type: "comment",
+            width: commentBoxWidth,
+            height: commentBoxHeight,
+            color: "rgba(255, 235, 60, 0.8)",
+          },
+          successCallback: (responseData) => {
+            console.log("Comment saved to backend successfully", responseData);
+            
+            // Update the annotation with the real comment ID from the response
+            if (responseData?.data?.commentId) {
+              const updatedAnnotation = {
+                ...newAnnotation,
+                id: responseData.data.commentId, // Use the commentId as the main ID
+                commentId: responseData.data.commentId, // Also store the commentId
+              };
+              
+              // Replace the annotation in the store with the real ID
+              removeAnnotation(newAnnotation.id);
+              addAnnotation(updatedAnnotation);
+              
+              console.log("Updated annotation with real comment ID:", updatedAnnotation);
+            }
+          },
+          errorCallback: (error) => {
+            console.error("Failed to save comment to backend:", error);
+            showErrorToast({
+              message: "Error",
+              description: "Failed to save comment to server",
+            });
+          },
+        });
+      } catch (error) {
+        console.error("Error saving comment:", error);
+      }
+    }
+  };
+
+  // Handle reply to existing comment
+  const handleReplySubmit = async (replyContent: string) => {
+    if (!activeComment || !params.fileId) return;
+
+    console.log("Reply submitted:", replyContent, "to comment:", activeComment);
+
+    try {
+      await onAddReply({
+        fileId: params.fileId,
+        payload: {
+          content: replyContent,
+          parentId: activeComment.commentId || activeComment.id,
+        },
+        successCallback: (responseData) => {
+          console.log("Reply saved to backend successfully", responseData);
+          
+          // Keep the dropdown open and let the CommentDropdown handle the UI update
+          // The dropdown will refetch the comment data to show the new reply
+        },
+        errorCallback: (error) => {
+          console.error("Failed to save reply to backend:", error);
+          showErrorToast({
+            message: "Error",
+            description: "Failed to save reply to server",
+          });
+        },
+      });
+    } catch (error) {
+      console.error("Error saving reply:", error);
+    }
+  };
+
+  // Handle comment click for existing comments
+  const handleCommentClick = (comment: any) => {
+    console.log("Comment clicked:", comment);
+    setActiveComment(comment);
+    setIsNewComment(false);
+    
+    // Calculate screen position for the dropdown
+    const pageElement = pageRefs.current[comment.pageNumber];
+    if (pageElement) {
+      const pageRect = pageElement.getBoundingClientRect();
+      const viewport = pageViewports[comment.pageNumber];
+      if (viewport) {
+        // Handle both position object and direct x/y coordinates
+        let screenX, screenY;
+        
+        if (comment.position && comment.position.x !== undefined && comment.position.y !== undefined) {
+          // Use position object
+          screenX = pageRect.left + (comment.position.x / viewport.width) * pageRect.width;
+          screenY = pageRect.top + (comment.position.y / viewport.height) * pageRect.height;
+        } else if (comment.x !== undefined && comment.y !== undefined) {
+          // Use direct x/y coordinates
+          screenX = pageRect.left + (comment.x / viewport.width) * pageRect.width;
+          screenY = pageRect.top + (comment.y / viewport.height) * pageRect.height;
+        } else {
+          // Fallback to center of page
+          screenX = pageRect.left + pageRect.width / 2;
+          screenY = pageRect.top + pageRect.height / 2;
+        }
+        
+        // Get PDF container boundaries
+        const pdfContainer = containerRef.current;
+        const containerRect = pdfContainer?.getBoundingClientRect();
+        
+        setDropdownPosition({ 
+          x: screenX, 
+          y: screenY,
+          containerLeft: containerRect?.left || 0,
+          containerRight: containerRect?.right || window.innerWidth,
+          containerTop: containerRect?.top || 0,
+          containerBottom: containerRect?.bottom || window.innerHeight,
+          viewportWidth: viewport.width,
+          viewportHeight: viewport.height,
+          pageRect: pageRect,
+        });
+        setShowCommentDropdown(true);
+      }
+    }
+  };
+
+  // Handle new comment tool click
+  const handleNewCommentClick = (e: any) => {
+    if (activeTool === "comment") {
+      setIsNewComment(true);
+      setActiveComment(null);
+      
+      // Get the page element and its position
+      const pageElement = e.pageElement;
+      const pageRect = pageElement.getBoundingClientRect();
+      const pageNumber = e.pageNumber;
+      
+      // Get PDF container boundaries
+      const pdfContainer = containerRef.current;
+      const containerRect = pdfContainer?.getBoundingClientRect();
+      
+      // Get viewport dimensions for better positioning
+      const viewport = pageViewports[pageNumber] || { width: 612, height: 792 };
+      
+      setDropdownPosition({ 
+        x: e.clientX, 
+        y: e.clientY,
+        containerLeft: containerRect?.left || 0,
+        containerRight: containerRect?.right || window.innerWidth,
+        containerTop: containerRect?.top || 0,
+        containerBottom: containerRect?.bottom || window.innerHeight,
+        viewportWidth: viewport.width,
+        viewportHeight: viewport.height,
+        pageRect: pageRect,
+      });
+      setShowCommentDropdown(true);
+    }
   };
 
   // Set page ref
@@ -352,7 +606,7 @@ const MainSingleFile = () => {
             setActiveTool={setActiveTool}
             handleUndo={handleUndo}
             exportAnnotatedPdf={exportAnnotatedPdf}
-            isLoading={isLoading || saveLoading}
+            isLoading={isLoading || saveLoading || commentLoading}
             annotations={annotations}
             clearAll={clearAll}
             selectedColor={selectedColor}
@@ -378,6 +632,7 @@ const MainSingleFile = () => {
             currentAnnotation={currentAnnotation}
             selectedColor={selectedColor}
             annotations={annotations}
+            comments={comments}
             finishAnnotation={() => finishAnnotation(currentAnnotation, scale, addAnnotation, setIsDrawing, setCurrentAnnotation)}
             handlePageLoadSuccess={handlePageLoadSuccess}
             handleTouchEnd={handleTouchEnd}
@@ -387,20 +642,25 @@ const MainSingleFile = () => {
             setPageRef={setPageRef}
             startAnnotation={startAnnotation}
             updateAnnotation={(e) => updateAnnotation(e, currentAnnotation)}
+            onCommentClick={handleCommentClick}
+            onNewCommentClick={handleNewCommentClick}
+            pageViewports={pageViewports}
+            pageRefs={pageRefs}
           />
         </div>
       </div>
-      {/* Floating Comment Dialog */}
-      <CommentDialog
-        showCommentDialog={showCommentDialog}
-        setShowCommentDialog={setShowCommentDialog}
-        commentDialogPos={commentDialogPos}
-        commentText={commentText}
-        setCommentText={setCommentText}
-        handleCommentSubmit={handleCommentSubmit}
-        setActiveTool={setActiveTool}
-        setCommentDialogPos={setCommentDialogPos}
-      />
+      {/* Unified Comment Dropdown */}
+      {showCommentDropdown && dropdownPosition && (
+        <CommentDropdown
+          open={showCommentDropdown}
+          onOpenChange={setShowCommentDropdown}
+          position={dropdownPosition}
+          comment={activeComment}
+          onSendReply={handleReplySubmit}
+          onSendNewComment={handleNewComment}
+          isNewComment={isNewComment}
+        />
+      )}
       {/* Signature Modal */}
       <SignatureModal
         showSignatureModal={showSignatureModal}

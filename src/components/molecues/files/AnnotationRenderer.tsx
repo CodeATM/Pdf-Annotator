@@ -40,9 +40,9 @@ export const useAnnotationRenderer = ({
       height = Math.abs(annotation.height) * scaleY;
     }
 
-    // Constrain annotations within the page container
-    left = Math.max(0, Math.min(left, pageRect.width - width));
-    top = Math.max(0, Math.min(top, pageRect.height - height));
+    // Removed clamping so annotation always starts at the click position
+    // left = Math.max(0, Math.min(left, pageRect.width - width));
+    // top = Math.max(0, Math.min(top, pageRect.height - height));
 
     return {
       left: `${left}px`,

@@ -246,6 +246,7 @@ const page = () => {
           updatedAt: fileData?.updatedAt,
           fileUrl: fileData?.fileUrl,
           annotations: fileData?.annotations,
+          comments: fileData?.comments,
         });
       },
       errorCallback: () => setIsInitialLoad(false),
@@ -269,6 +270,7 @@ const page = () => {
           updatedAt: fileData?.updatedAt,
           fileUrl: fileData?.fileUrl,
           annotations: fileData?.annotations,
+          comments: fileData?.comments,
         });
       },
       errorCallback: (error: any) => {
